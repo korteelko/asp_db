@@ -568,8 +568,6 @@ std::stringstream DBConnectionPostgre::setupInsertString(
   std::string fnames = "INSERT INTO " + tables_->GetTableName(fields.table) + " (";
   std::vector<std::string> vals;
   std::vector<std::string> rows(fields.values_vec.size());
-  db_variable::db_var_type t;
-  auto txn = pqxx_work.GetTransaction();
   // set fields
   auto &row = fields.values_vec[0];
   for (auto &x: row)
@@ -578,20 +576,9 @@ std::stringstream DBConnectionPostgre::setupInsertString(
 
   for (const auto &row: fields.values_vec) {
     std::string value = " (";
-    for (const auto &x : row) {
+    for (const auto &x: row) {
       if (x.first >= 0 && x.first < fields.fields.size()) {
-        t = fields.fields[x.first].type;
-        if (txn && (t == db_variable::db_var_type::type_char_array ||
-            t == db_variable::db_var_type::type_text)) {
-          /* хз, но в интернетах так */
-          value += txn->quote(x.second) + ", ";
-        } else if (t == db_variable::db_var_type::type_date) {
-          value += DateToPostgreDate(x.second) + ", ";
-        } else if (t == db_variable::db_var_type::type_time) {
-          value += TimeToPostgreTime(x.second) + ", ";
-        } else {
-          value += x.second + ", ";
-        }
+        addVariableToString(&value, fields.fields[x.first], x.second);
       } else {
         Logging::Append(io_loglvl::debug_logs, "Ошибка индекса операции INSERT.\n"
             "\tДля таблицы " + tables_->GetTableName(fields.table));
@@ -762,6 +749,45 @@ merror_t DBConnectionPostgre::setConstrainVector(const std::vector<int> &indexes
     }
   }
   return error;
+}
+
+void DBConnectionPostgre::addVariableToString(std::string *str_p,
+    const db_variable &var, const std::string &value) {
+  db_variable::db_var_type t = var.type;
+  if (var.flags.is_array && t != db_type::type_char_array) {
+    std::string str = "[";
+    std::vector<std::string> vec;
+    if (is_status_ok(db_variable::TranslateToVector(value, &vec))) {
+      for (const auto &x: vec)
+        str += getVariableValue(var, x);
+      size_t lp = str.rfind(',');
+      if (lp != std::string::npos)
+        str[lp] = ' ';
+    }
+    str += "]";
+    *str_p += str;
+  } else {
+    *str_p += getVariableValue(var, value);
+  }
+}
+
+std::string DBConnectionPostgre::getVariableValue(const db_variable &var,
+    const std::string &value) {
+  db_variable::db_var_type t = var.type;
+  std::string str = "";
+  if ((t == db_type::type_char_array ||
+      t == db_type::type_text)) {
+    auto txn = pqxx_work.GetTransaction();
+    if (txn)
+      str = txn->quote(value) + ", ";
+  } else if (t == db_type::type_date) {
+    str = DateToPostgreDate(value) + ", ";
+  } else if (t == db_type::type_time) {
+    str = TimeToPostgreTime(value) + ", ";
+  } else {
+    str += value + ", ";
+  }
+  return str;
 }
 
 std::string DBConnectionPostgre::db_variable_to_string(

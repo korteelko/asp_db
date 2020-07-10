@@ -11,9 +11,7 @@
 #define _DATABASE__DB_CONNECTION_POSTGRESQL_H_
 
 #include "Common.h"
-
 #include "db_connection.h"
-
 #include "ErrorWrap.h"
 #include "Logging.h"
 
@@ -79,7 +77,11 @@ public:
     *   к формату 'hh:mm' */
   static std::string PostgreTimeToTime(const std::string &ptime);
 
+#ifdef DATABASE_TEST
+public:
+#else
 private:
+#endif
   /** \brief Добавить бэкап точку перед операцией изменяющей
     *   состояние таблицы */
   mstatus_t addSavePoint();
@@ -209,6 +211,19 @@ private:
     *   имена полей из fields */
   merror_t setConstrainVector(const std::vector<int> &indexes,
       const db_fields_collection &fields, std::vector<std::string> *output);
+
+  /** \brief Добавить к строке 'str_p' строку, собранную по данным
+    *   'var' и 'value'
+    * \param str_p Указатель на строку для добавления
+    * \param var Параметры добавляемого значения
+    * \param value Строковое представление параметра */
+  void addVariableToString(std::string *str_p, const db_variable &var,
+      const std::string &value);
+  /** \brief Получить строковое представление переменной
+    * \param var Параметры добавляемого значения
+    * \param value Строковое представление параметра */
+  std::string getVariableValue(const db_variable &var,
+      const std::string &value);
 
 private:
   struct {

@@ -36,7 +36,6 @@ set(DATABASE_SOURCE
 set(UTILS_SOURCE
   ${SOURCE_ROOT}/utils/Common.cpp
   ${SOURCE_ROOT}/utils/ErrorWrap.cpp
-  ${SOURCE_ROOT}/utils/FileURL.cpp
   ${SOURCE_ROOT}/utils/Logging.cpp
 )
 include_directories(

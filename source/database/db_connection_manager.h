@@ -2,8 +2,7 @@
  * asp_therm - implementation of real gas equations of state
  * ===================================================================
  * * db_connection_manager *
- *   В файле реализован API доступа к базе данных для
- * проекта asp_therm
+ *   Класс управляющий подключением к базе данных
  * ===================================================================
  *
  * Copyright (c) 2020 Mishutinski Yurii
@@ -116,7 +115,7 @@ public:
   /** \brief Попробовать законектится к БД */
   mstatus_t ResetConnectionParameters(const db_parameters &parameters);
   /** \brief Проверка существования таблицы */
-  bool IsTableExist(db_table dt);
+  bool IsTableExists(db_table dt);
   /** \brief Создать таблицу */
   mstatus_t CreateTable(db_table dt);
 
@@ -274,8 +273,12 @@ private:
 private:
   ErrorWrap error_;
   mstatus_t status_;
+#ifdef CXX17
   /** \brief Мьютекс на подключение к БД */
   SharedMutex connect_init_lock_;
+#else
+  Mutex connect_init_lock_;
+#endif  // CXX17
   /** \brief Параметры текущего подключения к БД */
   db_parameters parameters_;
   /** \brief */
