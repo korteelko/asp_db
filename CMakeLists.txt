@@ -25,14 +25,9 @@ endif(UNIX)
 #======================================================
 # SOURCE
 #======================================================
-set(DATABASE_SOURCE
-  ${SOURCE_ROOT}/database/db_connection.cpp
-  ${SOURCE_ROOT}/database/db_connection_postgre.cpp
-  ${SOURCE_ROOT}/database/db_connection_manager.cpp
-  ${SOURCE_ROOT}/database/db_defines.cpp
-  ${SOURCE_ROOT}/database/db_queries_setup.cpp
-  ${SOURCE_ROOT}/database/db_query.cpp
-)
+include(db_source.cmake)
+list(TRANSFORM DATABASE_SOURCE PREPEND "${SOURCE_ROOT}/")
+
 set(UTILS_SOURCE
   ${SOURCE_ROOT}/utils/Common.cpp
   ${SOURCE_ROOT}/utils/ErrorWrap.cpp
