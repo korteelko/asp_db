@@ -33,6 +33,15 @@
 
 typedef uint32_t merror_t;
 
+#if not defined(ERROR_SUCCESS_T)
+#  define ERROR_SUCCESS_T         0x0000
+#  define ERROR_SUCCESS_T_MSG     "there are not any errors "
+#endif  // !ERROR_SUCCESS_T
+#if not defined(ERROR_GENERAL_T)
+#  define ERROR_GENERAL_T         0x0001
+#  define ERROR_GENERAL_T_MSG     "general error "
+#endif  // !ERROR_GENERAL_T
+
 /** \brief Составить стандартную пару (код ошибки, соответствующее сообщение) */
 #define ERROR_PAIR_DEFAULT(x) x, x ## _MSG
 

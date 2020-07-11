@@ -16,9 +16,6 @@
 #include <stdint.h>
 
 
-#define ERROR_SUCCESS_T     0x0000
-#define ERROR_GENERAL_T     0x0001
-
 #if defined(BYCMAKE_DEBUG)
 /** \brief Режим отладки */
 #  define _DEBUG

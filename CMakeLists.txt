@@ -13,9 +13,9 @@ add_definitions(-DBYCMAKE_CXX17)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-set(PROJECT_ROOT ${CMAKE_CURRENT_SOURCE_DIR})
+set(ASP_DB_ROOT ${CMAKE_CURRENT_SOURCE_DIR})
 set(SOURCE_ROOT ${CMAKE_CURRENT_SOURCE_DIR}/source)
-set(MODULES_DIR ${PROJECT_ROOT}/lib)
+set(MODULES_DIR ${ASP_DB_ROOT}/lib)
 set(OUTPUT_DIR ${MODULES_DIR}/asp_db)
 
 if(UNIX)
@@ -26,17 +26,8 @@ endif(UNIX)
 # SOURCE
 #======================================================
 include(db_source.cmake)
-list(TRANSFORM DATABASE_SOURCE PREPEND "${SOURCE_ROOT}/")
+include(utils_source.cmake)
 
-set(UTILS_SOURCE
-  ${SOURCE_ROOT}/utils/Common.cpp
-  ${SOURCE_ROOT}/utils/ErrorWrap.cpp
-  ${SOURCE_ROOT}/utils/Logging.cpp
-)
-include_directories(
-  ${SOURCE_ROOT}/database
-  ${SOURCE_ROOT}/utils
-)
 
 #======================================================
 # LIBRARIES AND MODULES
