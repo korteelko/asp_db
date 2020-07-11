@@ -21,10 +21,6 @@ ErrorWrap::ErrorWrap(merror_t error)
 ErrorWrap::ErrorWrap(merror_t error, const std::string &msg)
   : error_(error), msg_(msg), is_logged_(false) {}
 
-merror_t ErrorWrap::SetError(merror_t error) {
-  return SetError(error, "");
-}
-
 merror_t ErrorWrap::SetError(merror_t error, const std::string &msg) {
   if (error_ && !is_logged_)
     LogIt();
@@ -45,12 +41,6 @@ void ErrorWrap::LogIt(io_loglvl lvl) {
     if (!msg_.empty()) {
       Logging::Append(lvl, "Error occurred.\n  err_msg:" + msg_ +
           "\n  code:0x" + hex2str(error_));
-  #if defined(INCLUDE_ERRORCODES)
-    } else {
-      Logging::Append(lvl, "Error occurred.\n  custom err_msg:" +
-          std::string(GetCustomErrorMsg(error_)) +
-          "\n  code:0x" + hex2str(error_));
-  #endif  // INCLUDE_ERRORCODES
     }
     is_logged_ = true;
   }

@@ -109,7 +109,7 @@ merror_t Logging::initInstance(const logging_cfg *li) {
       Logging::output_.close();
     } else {
       Logging::is_aval_ = false;
-      Logging::error_.SetError(ERROR_FILE_LOGGING_ST);
+      Logging::error_.SetError(ERROR_PAIR_DEFAULT(ERROR_FILE_LOGGING_ST));
     }
   }
   if (error)
@@ -132,7 +132,7 @@ void Logging::append(const char *msg) {
     Logging::output_.close();
   } else {
     Logging::is_aval_ = false;
-    Logging::error_.SetError(ERROR_FILE_LOGGING_ST);
+    Logging::error_.SetError(ERROR_PAIR_DEFAULT(ERROR_FILE_LOGGING_ST));
   }
 }
 
@@ -167,7 +167,7 @@ void Logging::ClearLogfile() {
     Logging::output_.close();
   } else {
     Logging::is_aval_ = false;
-    Logging::error_.SetError(ERROR_FILE_LOGGING_ST);
+    Logging::error_.SetError(ERROR_PAIR_DEFAULT(ERROR_FILE_LOGGING_ST));
   }
   return;
 }

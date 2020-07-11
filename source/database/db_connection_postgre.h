@@ -137,7 +137,7 @@ private:
         }
       } else {
         // error - not connected
-        error_.SetError(ERROR_DB_CONNECTION);
+        error_.SetError(ERROR_PAIR_DEFAULT(ERROR_DB_CONNECTION));
         status_ = STATUS_NOT;
       }
     }

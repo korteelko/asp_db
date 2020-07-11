@@ -28,24 +28,35 @@
 
 /** \brief Ошибка подключения к базе данных */
 #define ERROR_DB_CONNECTION   (0x0100 | ERROR_DATABASE_T)
+#define ERROR_DB_CONNECTION_MSG   "database connection error "
 /** \brief Ошибка переменной БД */
 #define ERROR_DB_VARIABLE     (0x0200 | ERROR_DATABASE_T)
+#define ERROR_DB_VARIABLE_MSG     "database variable error "
 /** \brief Ошибка поля ссылки */
 #define ERROR_DB_REFER_FIELD  (0x0300 | ERROR_DATABASE_T)
+#define ERROR_DB_REFER_FIELD_MSG  "database reference to another table error "
 /** \brief Ошибка во время выполнения операции "существование таблицы" */
 #define ERROR_DB_TABLE_EXISTS (0x0400 | ERROR_DATABASE_T)
+#define ERROR_DB_TABLE_EXISTS_MSG "database table exist error "
 /** \brief Ошибка составления запроса */
 #define ERROR_DB_QUERY_NULLP  (0x0500 | ERROR_DATABASE_T)
+#define ERROR_DB_QUERY_NULLP_MSG  "database query setup - database nullptr error "
 /** \brief Ошибка первичного ключа */
 #define ERROR_DB_TABLE_PKEY   (0x0600 | ERROR_DATABASE_T)
+#define ERROR_DB_TABLE_PKEY_MSG   "database table primary key setup error "
 /** \brief Ошибка SQL запроса */
 #define ERROR_DB_SQL_QUERY    (0x0700 | ERROR_DATABASE_T)
+#define ERROR_DB_SQL_QUERY_MSG    "database sql query exception "
 /** \brief Ошибочная операция СУБД */
 #define ERROR_DB_OPERATION    (0x0800 | ERROR_DATABASE_T)
+#define ERROR_DB_OPERATION_MSG    "database wrong operation name "
 /** \brief Колонка не существует */
 #define ERROR_DB_COL_EXISTS   (0x0900 | ERROR_DATABASE_T)
+#define ERROR_DB_COL_EXISTS_MSG   "database table column doesn't exists "
 /** \brief Ошибка конфигурации точки сохранения */
 #define ERROR_DB_SAVE_POINT   (0x0A00 | ERROR_DATABASE_T)
+#define ERROR_DB_SAVE_POINT_MSG   "database save point error "
+
 
 namespace asp_db {
 /** \brief Идентификатор таблиц */
