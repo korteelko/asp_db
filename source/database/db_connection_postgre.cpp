@@ -601,8 +601,11 @@ std::stringstream DBConnectionPostgre::setupDeleteString(
   std::stringstream sstr;
   postgresql_impl::where_string_set ws(pqxx_work.GetTransaction());
   sstr << "DELETE FROM " << tables_->GetTableName(fields.table);
+  std::string str = "";
   if (fields.where_condition != nullptr)
-    sstr << " WHERE " << fields.where_condition->GetString(ws);
+    str = fields.where_condition->GetString(ws);
+  if (!trim_str(str).empty())
+    sstr << " WHERE " << str;
   sstr << ";";
   return sstr;
 }

@@ -72,12 +72,15 @@ int add_data(DBConnectionManager &dbm) {
   ulysses.title = "Ulysses";
   ulysses.first_pub_year = 1922;
 
+  book b;
+  b.initialized = 1;
+  dbm.DeleteRows(b);
   mstatus_t st = dbm.SaveSingleRow(divine_comedy, &divine_comedy.id);
   if (is_status_ok(st)) {
     id_container ids;
     dbm.SaveVectorOfRows(books, &ids);
     if (ids.id_vec.size() == books.size()) {
-      for (int i = 0; i < books.size(); ++i)
+      for (size_t i = 0; i < books.size(); ++i)
         books[i].id = ids.id_vec[i];
     }
   }
@@ -103,6 +106,9 @@ int add_data(DBConnectionManager &dbm) {
   ulysses_ru.translators = "Хинкис В.А., Хоружий С.С.";
   ulysses_ru.translated_name = "Улисс";
 
+  translation t;
+  t.initialized = 1;
+  dbm.DeleteRows(t);
   st = dbm.SaveVectorOfRows(trans);
 
   // авторы
@@ -135,6 +141,9 @@ int add_data(DBConnectionManager &dbm) {
   joyce.died_year = 1941;
   joyce.books = {ulysses.title};
 
+  author a;
+  a.initialized = 1;
+  dbm.DeleteRows(a);
   st = dbm.SaveVectorOfRows(aths);
 
   return is_status_ok(st);

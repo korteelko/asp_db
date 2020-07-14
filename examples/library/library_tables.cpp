@@ -67,7 +67,8 @@ static const db_table_create_setup::uniques_container tr_uniques = {
 static const std::shared_ptr<db_ref_collection> translation_references(
    new db_ref_collection {
    db_reference(TABLE_FIELD_NAME(TRANS_BOOK_ID), table_book,
-      TABLE_FIELD_NAME(BOOK_ID), true)});
+      TABLE_FIELD_NAME(BOOK_ID), true, db_reference_act::ref_act_cascade,
+      db_reference_act::ref_act_cascade)});
 static const db_table_create_setup translation_create_setup(
     table_translation, translation_fields, tr_uniques,
     translation_references);
@@ -199,16 +200,19 @@ void IDBTables::setInsertValues<>(db_query_insert_setup *src,
   /* insert all data */
   db_query_basesetup::row_values values;
   db_query_basesetup::field_index i;
-  if (select_data.id > 0) {
-    if ((i = src->IndexByFieldId(BOOK_ID)) != db_query_basesetup::field_index_end)
-      values.emplace(i, std::to_string(select_data.id));
+  // пример для удаления
+  if (select_data.initialized != 1) {
+    if (select_data.id > 0) {
+      if ((i = src->IndexByFieldId(BOOK_ID)) != db_query_basesetup::field_index_end)
+        values.emplace(i, std::to_string(select_data.id));
+    }
+    if ((i = src->IndexByFieldId(BOOK_TITLE)) != db_query_basesetup::field_index_end)
+      values.emplace(i, select_data.title);
+    if ((i = src->IndexByFieldId(BOOK_PUB_YEAR)) != db_query_basesetup::field_index_end)
+      values.emplace(i, std::to_string(select_data.first_pub_year));
+    if ((i = src->IndexByFieldId(BOOK_LANG)) != db_query_basesetup::field_index_end)
+      values.emplace(i, std::to_string(select_data.lang));
   }
-  if ((i = src->IndexByFieldId(BOOK_TITLE)) != db_query_basesetup::field_index_end)
-    values.emplace(i, select_data.title);
-  if ((i = src->IndexByFieldId(BOOK_PUB_YEAR)) != db_query_basesetup::field_index_end)
-    values.emplace(i, std::to_string(select_data.first_pub_year));
-  if ((i = src->IndexByFieldId(BOOK_LANG)) != db_query_basesetup::field_index_end)
-    values.emplace(i, std::to_string(select_data.lang));
   src->values_vec.emplace_back(values);
 }
 /** \brief Собрать вектор 'values' значений столбцов БД,
@@ -218,19 +222,22 @@ void IDBTables::setInsertValues<translation>(db_query_insert_setup *src,
     const translation &select_data) const {
   db_query_basesetup::row_values values;
   db_query_basesetup::field_index i;
-  if (select_data.id > 0) {
-    if ((i = src->IndexByFieldId(TRANS_ID)) != db_query_basesetup::field_index_end)
-      values.emplace(i, std::to_string(select_data.id));
+  // пример для удаления
+  if (select_data.initialized != 1) {
+    if (select_data.id > 0) {
+      if ((i = src->IndexByFieldId(TRANS_ID)) != db_query_basesetup::field_index_end)
+        values.emplace(i, std::to_string(select_data.id));
+    }
+    if (select_data.book_p.first > 0)
+      if ((i = src->IndexByFieldId(TRANS_BOOK_ID)) != db_query_basesetup::field_index_end)
+        values.emplace(i, std::to_string(select_data.book_p.first));
+    if ((i = src->IndexByFieldId(TRANS_LANG)) != db_query_basesetup::field_index_end)
+      values.emplace(i, std::to_string(select_data.lang));
+    if ((i = src->IndexByFieldId(TRANS_TRANS_TITLE)) != db_query_basesetup::field_index_end)
+      values.emplace(i, select_data.translated_name);
+    if ((i = src->IndexByFieldId(TRANS_TRANSLATORS)) != db_query_basesetup::field_index_end)
+      values.emplace(i, select_data.translators);
   }
-  if (select_data.book_p.first > 0)
-    if ((i = src->IndexByFieldId(TRANS_BOOK_ID)) != db_query_basesetup::field_index_end)
-      values.emplace(i, std::to_string(select_data.book_p.first));
-  if ((i = src->IndexByFieldId(TRANS_LANG)) != db_query_basesetup::field_index_end)
-    values.emplace(i, std::to_string(select_data.lang));
-  if ((i = src->IndexByFieldId(TRANS_TRANS_TITLE)) != db_query_basesetup::field_index_end)
-    values.emplace(i, select_data.translated_name);
-  if ((i = src->IndexByFieldId(TRANS_TRANSLATORS)) != db_query_basesetup::field_index_end)
-    values.emplace(i, select_data.translators);
   src->values_vec.emplace_back(values);
 }
 /** \brief Собрать вектор 'values' значений столбцов БД,
@@ -240,19 +247,22 @@ void IDBTables::setInsertValues<author>(db_query_insert_setup *src,
     const author &select_data) const {
   db_query_basesetup::row_values values;
   db_query_basesetup::field_index i;
-  if (select_data.id > 0) {
-    if ((i = src->IndexByFieldId(AUTHOR_ID)) != db_query_basesetup::field_index_end)
-      values.emplace(i, std::to_string(select_data.id));
-  }
-  if ((i = src->IndexByFieldId(AUTHOR_NAME)) != db_query_basesetup::field_index_end)
-    values.emplace(i, select_data.name);
-  if ((i = src->IndexByFieldId(AUTHOR_BORN_YEAR)) != db_query_basesetup::field_index_end)
-    values.emplace(i, std::to_string(select_data.born_year));
-  if ((i = src->IndexByFieldId(AUTHOR_DIED_YEAR)) != db_query_basesetup::field_index_end)
-    values.emplace(i, std::to_string(select_data.died_year));
-  if (select_data.books.size()) {
-    if ((i = src->IndexByFieldId(AUTHOR_BOOKS)) != db_query_basesetup::field_index_end)
-      values.emplace(i, db_variable::TranslateFromVector(select_data.books));
+  // пример для удаления
+  if (select_data.initialized != 1) {
+    if (select_data.id > 0) {
+      if ((i = src->IndexByFieldId(AUTHOR_ID)) != db_query_basesetup::field_index_end)
+        values.emplace(i, std::to_string(select_data.id));
+    }
+    if ((i = src->IndexByFieldId(AUTHOR_NAME)) != db_query_basesetup::field_index_end)
+      values.emplace(i, select_data.name);
+    if ((i = src->IndexByFieldId(AUTHOR_BORN_YEAR)) != db_query_basesetup::field_index_end)
+      values.emplace(i, std::to_string(select_data.born_year));
+    if ((i = src->IndexByFieldId(AUTHOR_DIED_YEAR)) != db_query_basesetup::field_index_end)
+      values.emplace(i, std::to_string(select_data.died_year));
+    if (select_data.books.size()) {
+      if ((i = src->IndexByFieldId(AUTHOR_BOOKS)) != db_query_basesetup::field_index_end)
+        values.emplace(i, db_variable::TranslateFromVector(select_data.books));
+    }
   }
   src->values_vec.emplace_back(values);
 }
