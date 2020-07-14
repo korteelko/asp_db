@@ -755,7 +755,7 @@ void DBConnectionPostgre::addVariableToString(std::string *str_p,
     const db_variable &var, const std::string &value) {
   db_variable::db_var_type t = var.type;
   if (var.flags.is_array && t != db_type::type_char_array) {
-    std::string str = "[";
+    std::string str = "ARRAY[";
     std::vector<std::string> vec;
     if (is_status_ok(db_variable::TranslateToVector(value, &vec))) {
       for (const auto &x: vec)
@@ -764,7 +764,7 @@ void DBConnectionPostgre::addVariableToString(std::string *str_p,
       if (lp != std::string::npos)
         str[lp] = ' ';
     }
-    str += "]";
+    str += "], ";
     *str_p += str;
   } else {
     *str_p += getVariableValue(var, value);

@@ -95,7 +95,8 @@ mstatus_t db_variable::TranslateToVector(const std::string &str,
     start = pos + 1;
   }
   if (vec_p->size())
-    if (is_status_ok(st))
+    // ошибки не было, но распарсено неудачно
+    if (is_status_ok(st) != true)
       st = STATUS_NOT;
   return st;
 }

@@ -6,12 +6,12 @@ project(${PROJECT_NAME})
 
 add_compile_options(-Wall)
 
-add_definitions(-DBYCMAKE_DEBUG)
 set(CMAKE_BUILD_TYPE Debug)
+add_definitions(-DBYCMAKE_DEBUG)
 
-add_definitions(-DBYCMAKE_CXX17)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
+add_definitions(-DBYCMAKE_CXX17)
 
 set(ASP_DB_ROOT ${CMAKE_CURRENT_SOURCE_DIR})
 set(SOURCE_ROOT ${CMAKE_CURRENT_SOURCE_DIR}/source)
@@ -22,12 +22,17 @@ if(UNIX)
   add_definitions(-DOS_NIX)
 endif(UNIX)
 
+# OPTIONS
+if(CMAKE_BUILD_TYPE STREQUAL "Debug")
+  set(BUILD_EXAMPLES TRUE)
+  #set(TESTS_ENABLED TRUE)
+endif()
+
 #======================================================
 # SOURCE
 #======================================================
 include(db_source.cmake)
 include(utils_source.cmake)
-
 
 #======================================================
 # LIBRARIES AND MODULES
@@ -65,4 +70,14 @@ target_link_libraries(${PROJECT_NAME}
   Threads::Threads
 )
 
-# todo: add examples and tests
+# add examples
+if(BUILD_EXAMPLES)
+  message(STATUS "Собираем примеры")
+  add_subdirectory("${ASP_DB_ROOT}/examples")
+endif()
+
+# run tests
+if(TESTS_ENABLED)
+  message(STATUS "Запускаем тесты")
+  add_subdirectory("${ASP_DB_ROOT}/tests/full")
+endif()
