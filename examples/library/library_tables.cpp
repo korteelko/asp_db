@@ -201,15 +201,21 @@ void IDBTables::setInsertValues<>(db_query_insert_setup *src,
   db_query_basesetup::row_values values;
   db_query_basesetup::field_index i;
   // пример для удаления
-  if (select_data.initialized != 1) {
+  if (select_data.IsFlagSet(book::f_id)) {
     if (select_data.id > 0) {
       if ((i = src->IndexByFieldId(BOOK_ID)) != db_query_basesetup::field_index_end)
         values.emplace(i, std::to_string(select_data.id));
     }
+  }
+  if (select_data.IsFlagSet(book::f_title)) {
     if ((i = src->IndexByFieldId(BOOK_TITLE)) != db_query_basesetup::field_index_end)
       values.emplace(i, select_data.title);
+  }
+  if (select_data.IsFlagSet(book::f_pub_year)) {
     if ((i = src->IndexByFieldId(BOOK_PUB_YEAR)) != db_query_basesetup::field_index_end)
       values.emplace(i, std::to_string(select_data.first_pub_year));
+  }
+  if (select_data.IsFlagSet(book::f_lang)) {
     if ((i = src->IndexByFieldId(BOOK_LANG)) != db_query_basesetup::field_index_end)
       values.emplace(i, std::to_string(select_data.lang));
   }
@@ -223,18 +229,26 @@ void IDBTables::setInsertValues<translation>(db_query_insert_setup *src,
   db_query_basesetup::row_values values;
   db_query_basesetup::field_index i;
   // пример для удаления
-  if (select_data.initialized != 1) {
+  if (select_data.IsFlagSet(translation::f_id)) {
     if (select_data.id > 0) {
       if ((i = src->IndexByFieldId(TRANS_ID)) != db_query_basesetup::field_index_end)
         values.emplace(i, std::to_string(select_data.id));
     }
+  }
+  if (select_data.IsFlagSet(translation::f_book_p)) {
     if (select_data.book_p.first > 0)
       if ((i = src->IndexByFieldId(TRANS_BOOK_ID)) != db_query_basesetup::field_index_end)
         values.emplace(i, std::to_string(select_data.book_p.first));
+  }
+  if (select_data.IsFlagSet(translation::f_lang)) {
     if ((i = src->IndexByFieldId(TRANS_LANG)) != db_query_basesetup::field_index_end)
       values.emplace(i, std::to_string(select_data.lang));
+  }
+  if (select_data.IsFlagSet(translation::f_tr_name)) {
     if ((i = src->IndexByFieldId(TRANS_TRANS_TITLE)) != db_query_basesetup::field_index_end)
       values.emplace(i, select_data.translated_name);
+  }
+  if (select_data.IsFlagSet(translation::f_translators)) {
     if ((i = src->IndexByFieldId(TRANS_TRANSLATORS)) != db_query_basesetup::field_index_end)
       values.emplace(i, select_data.translators);
   }
@@ -248,17 +262,25 @@ void IDBTables::setInsertValues<author>(db_query_insert_setup *src,
   db_query_basesetup::row_values values;
   db_query_basesetup::field_index i;
   // пример для удаления
-  if (select_data.initialized != 1) {
+  if (select_data.IsFlagSet(author::f_id)) {
     if (select_data.id > 0) {
       if ((i = src->IndexByFieldId(AUTHOR_ID)) != db_query_basesetup::field_index_end)
         values.emplace(i, std::to_string(select_data.id));
     }
+  }
+  if (select_data.IsFlagSet(author::f_name)) {
     if ((i = src->IndexByFieldId(AUTHOR_NAME)) != db_query_basesetup::field_index_end)
       values.emplace(i, select_data.name);
+  }
+  if (select_data.IsFlagSet(author::f_b_year)) {
     if ((i = src->IndexByFieldId(AUTHOR_BORN_YEAR)) != db_query_basesetup::field_index_end)
       values.emplace(i, std::to_string(select_data.born_year));
+  }
+  if (select_data.IsFlagSet(author::f_d_year)) {
     if ((i = src->IndexByFieldId(AUTHOR_DIED_YEAR)) != db_query_basesetup::field_index_end)
       values.emplace(i, std::to_string(select_data.died_year));
+  }
+  if (select_data.IsFlagSet(author::f_books)) {
     if (select_data.books.size()) {
       if ((i = src->IndexByFieldId(AUTHOR_BOOKS)) != db_query_basesetup::field_index_end)
         values.emplace(i, db_variable::TranslateFromVector(select_data.books));

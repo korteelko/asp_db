@@ -13,6 +13,7 @@
 #ifndef EXAMPLES__LIBRARY_STRUCTS_H
 #define EXAMPLES__LIBRARY_STRUCTS_H
 
+#include <iostream>
 #include <string>
 #include <utility>
 #include <vector>
@@ -32,6 +33,15 @@ enum language_t {
 };
 /** \brief Вот например книжка */
 struct book {
+  /** \brief Флаги инициализированных полей */
+  enum initialized_flags {
+    f_title = 0x01,
+    f_pub_year = 0x02,
+    f_lang = 0x04,
+    f_id = 0x08,
+    f_full = 0x0f
+  };
+  inline bool IsFlagSet(initialized_flags f) const { return f & initialized; }
   /** \brief Номер в таблице БД */
   row_id id;
   /** \brief Есть у неё название */
@@ -43,9 +53,23 @@ struct book {
 
   int32_t initialized = 0;
 };
+inline std::ostream &operator<< (std::ostream &stream, const book &b) {
+  return stream << b.title << ", year: " << b.first_pub_year <<
+      ", lang code " << b.lang << ", id " << b.id << std::endl;
+}
 
 /** \brief Перевод */
 struct translation {
+  /** \brief Флаги инициализированных полей */
+  enum initialized_flags {
+    f_book_p = 0x01,
+    f_lang = 0x02,
+    f_tr_name = 0x04,
+    f_translators = 0x08,
+    f_id = 0x10,
+    f_full = 0x1f
+  };
+  inline bool IsFlagSet(initialized_flags f) const { return f & initialized; }
   row_id id;
   /** \brief Книги */
   std::pair<row_id, book *> book_p;
@@ -58,6 +82,15 @@ struct translation {
 
 /** \brief Писатель */
 struct author {
+  enum initialized_flags {
+    f_name = 0x01,
+    f_b_year = 0x02,
+    f_d_year = 0x04,
+    f_books = 0x08,
+    f_id = 0x10,
+    f_full = 0x1f
+  };
+  inline bool IsFlagSet(initialized_flags f) const { return f & initialized; }
   row_id id;
   /** \brief Имя */
   std::string name;

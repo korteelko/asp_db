@@ -44,8 +44,9 @@ int add_data(DBConnectionManager &dbm) {
   divine_comedy.id = -1;
   divine_comedy.lang = lang_ita;
   divine_comedy.title = "Divina Commedia";
-  // дата завершения :)
+  // дата завершения
   divine_comedy.first_pub_year = 1320;
+  divine_comedy.initialized = book::f_full & ~book::f_id;
 
   std::vector<book> books(4);
   // Сервантес
@@ -54,34 +55,46 @@ int add_data(DBConnectionManager &dbm) {
   quixote.lang = lang_esp;
   quixote.title = "El ingenioso hidalgo don Quijote de la Mancha";
   quixote.first_pub_year = 1605;
+  quixote.initialized = book::f_full & ~book::f_id;
   // Лев Николаевич
   book &death_ii = books[1];
   death_ii.id = -1;
   death_ii.lang = lang_rus;
   death_ii.title = "Смерть Ивана Ильича";
   death_ii.first_pub_year = 1886;
+  death_ii.initialized = book::f_full & ~book::f_id;
   book &resurrection = books[2];
   resurrection.id = -1;
   resurrection.lang = lang_rus;
   resurrection.title = "Воскресенье";
   resurrection.first_pub_year = 1899;
+  resurrection.initialized = book::f_full & ~book::f_id;
   // Джойс
   book &ulysses = books[3];
   ulysses.id = -1;
   ulysses.lang = lang_eng;
   ulysses.title = "Ulysses";
   ulysses.first_pub_year = 1922;
+  ulysses.initialized = book::f_full & ~book::f_id;
 
   book b;
-  b.initialized = 1;
-  dbm.DeleteRows(b);
+  b.initialized = 0;
+  // удалить все существующие данные
+  std::vector<book> db_books;
+  // get already exists books
+  dbm.SelectRows(b, &db_books);
+  for (const auto &x: db_books)
+    std::cout << x;
+  if (db_books.size())
+    dbm.DeleteRows(b);
   mstatus_t st = dbm.SaveSingleRow(divine_comedy, &divine_comedy.id);
   if (is_status_ok(st)) {
     id_container ids;
-    dbm.SaveVectorOfRows(books, &ids);
-    if (ids.id_vec.size() == books.size()) {
-      for (size_t i = 0; i < books.size(); ++i)
-        books[i].id = ids.id_vec[i];
+    if (is_status_ok(dbm.SaveVectorOfRows(books, &ids))) {
+      if (ids.id_vec.size() == books.size()) {
+        for (size_t i = 0; i < books.size(); ++i)
+          books[i].id = ids.id_vec[i];
+      }
     }
   }
 
@@ -93,21 +106,24 @@ int add_data(DBConnectionManager &dbm) {
   divine_comedy_ru.book_p = {divine_comedy.id, &divine_comedy};
   divine_comedy_ru.translators = "Лозинский М.Л.";
   divine_comedy_ru.translated_name = "Божественная комедия";
+  divine_comedy_ru.initialized = translation::f_full & ~translation::f_id;
   translation &quixote_ru = trans[1];
   quixote_ru.id = -1;
   quixote_ru.lang = lang_rus;
   quixote_ru.book_p = {quixote.id, &quixote};
   quixote_ru.translators = "Любимов Н.М.";
   quixote_ru.translated_name = "Хитроумный идальго Дон Кихот Ламанчский";
+  quixote_ru.initialized = translation::f_full & ~translation::f_id;
   translation &ulysses_ru = trans[2];
   ulysses_ru.id = -1;
   ulysses_ru.lang = lang_rus;
   ulysses_ru.book_p = {ulysses.id, &ulysses};
   ulysses_ru.translators = "Хинкис В.А., Хоружий С.С.";
   ulysses_ru.translated_name = "Улисс";
+  ulysses_ru.initialized = translation::f_full & ~translation::f_id;
 
   translation t;
-  t.initialized = 1;
+  t.initialized = 0;
   dbm.DeleteRows(t);
   st = dbm.SaveVectorOfRows(trans);
 
@@ -119,12 +135,14 @@ int add_data(DBConnectionManager &dbm) {
   dante.born_year = 1265;
   dante.died_year = 1321;
   dante.books = {divine_comedy.title};
+  dante.initialized = author::f_full & ~author::f_id;
   author &cervantes = aths[1];
   cervantes.id = -1;
   cervantes.name = "Miguel de Cervantes Saavedra";
   cervantes.born_year = 1547;
   cervantes.died_year = 1616;
   cervantes.books = {quixote.title};
+  cervantes.initialized = author::f_full & ~author::f_id;
   author &tolstoy = aths[2];
   tolstoy.id = -1;
   tolstoy.name = "Leo Tolstoy";
@@ -134,15 +152,17 @@ int add_data(DBConnectionManager &dbm) {
     death_ii.title,
     resurrection.title
   };
+  tolstoy.initialized = author::f_full & ~author::f_id;
   author &joyce = aths[3];
   joyce.id = -1;
   joyce.name = "James Augustine Aloysius Joyce";
   joyce.born_year = 1882;
   joyce.died_year = 1941;
   joyce.books = {ulysses.title};
+  joyce.initialized = author::f_full & ~author::f_id;
 
   author a;
-  a.initialized = 1;
+  a.initialized = 0;
   dbm.DeleteRows(a);
   st = dbm.SaveVectorOfRows(aths);
 

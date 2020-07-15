@@ -565,6 +565,10 @@ std::stringstream DBConnectionPostgre::setupInsertString(
     error_.SetError(ERROR_DB_VARIABLE, "Нет данных для INSERT операции");
     return std::stringstream();
   }
+  if (fields.values_vec[0].empty()) {
+    error_.SetError(ERROR_DB_VARIABLE, "INSERT операция для пустых строк");
+    return std::stringstream();
+  }
   std::string fnames = "INSERT INTO " + tables_->GetTableName(fields.table) + " (";
   std::vector<std::string> vals;
   std::vector<std::string> rows(fields.values_vec.size());
@@ -614,8 +618,11 @@ std::stringstream DBConnectionPostgre::setupSelectString(
   std::stringstream sstr;
   postgresql_impl::where_string_set ws(pqxx_work.GetTransaction());
   sstr << "SELECT * FROM " << tables_->GetTableName(fields.table);
+  std::string str = "";
   if (fields.where_condition != nullptr)
-    sstr << " WHERE " << fields.where_condition->GetString(ws);
+    str = fields.where_condition->GetString(ws);
+  if (!trim_str(str).empty())
+    sstr << " WHERE " << str;
   sstr << ";";
   return sstr;
 }
@@ -632,7 +639,10 @@ std::stringstream DBConnectionPostgre::setupUpdateString(
           + " = " + x.second + ",";
     set_str[set_str.size() - 1] = ' ';
     sstr << set_str;
+    std::string str = "";
     if (fields.where_condition != nullptr)
+      str = fields.where_condition->GetString(ws);
+    if (!trim_str(str).empty())
       sstr << " WHERE " << fields.where_condition->GetString(ws);
     sstr << ";";
   }
