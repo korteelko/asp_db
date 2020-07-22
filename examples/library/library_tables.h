@@ -22,6 +22,8 @@
 #include <vector>
 
 
+/* just example */
+
 using namespace asp_db;
 
 #define TABLE_FIELD_NAME(x) x ## _NAME
@@ -35,12 +37,17 @@ using namespace asp_db;
 
 /* cols */
 /*   books */
+/*|   id   |   title   |   first publ. year   |   orig. lang.|*/
+/* UNIQUE(title, publ. year) */
 #define BOOK_ID           (BOOK_TABLE | 0x0001)
 #define BOOK_TITLE        (BOOK_TABLE | 0x0002)
 #define BOOK_PUB_YEAR     (BOOK_TABLE | 0x0003)
 #define BOOK_LANG         (BOOK_TABLE | 0x0004)
 
 /*   translation */
+/*|   id   |   book id   |   target lang.   |   target lang. title   |   translators| */
+/* UNIQUE(id, lang, target lang. title) */
+/* REFERENCE('book id' --> 'id' in table 'books') FOREIGN KEY */
 #define TRANS_ID          (TRANSLATION_TABLE | 0x0001)
 #define TRANS_BOOK_ID     (TRANSLATION_TABLE | 0x0002)
 #define TRANS_LANG        (TRANSLATION_TABLE | 0x0003)
@@ -48,6 +55,8 @@ using namespace asp_db;
 #define TRANS_TRANSLATORS (TRANSLATION_TABLE | 0x0005)
 
 /*   author */
+/*|   id   |   name   |   born year(NULL)   |   died year(NULL)   |   books[](NULL)| */
+/* UNIQUE(name, born year, died year) */
 #define AUTHOR_ID         (AUTHOR_TABLE | 0x0001)
 #define AUTHOR_NAME       (AUTHOR_TABLE | 0x0002)
 #define AUTHOR_BORN_YEAR  (AUTHOR_TABLE | 0x0003)
@@ -56,10 +65,10 @@ using namespace asp_db;
 
 /* names */
 /*   books */
-#define BOOK_ID_NAME       "book_id"
-#define BOOK_TITLE_NAME    "book_title"
-#define BOOK_PUB_YEAR_NAME "book_pub_year"
-#define BOOK_LANG_NAME     "book_original_language"
+#define BOOK_ID_NAME            "book_id"
+#define BOOK_TITLE_NAME         "book_title"
+#define BOOK_PUB_YEAR_NAME      "book_pub_year"
+#define BOOK_LANG_NAME          "book_original_language"
 
 /*   translation */
 #define TRANS_ID_NAME           "tr_id"
