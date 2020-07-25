@@ -581,7 +581,7 @@ std::stringstream DBConnectionPostgre::setupInsertString(
   for (const auto &row: fields.values_vec) {
     std::string value = " (";
     for (const auto &x: row) {
-      if (x.first >= 0 && x.first < fields.fields.size()) {
+      if (x.first >= 0 && (x.first < fields.fields.size())) {
         addVariableToString(&value, fields.fields[x.first], x.second);
       } else {
         Logging::Append(io_loglvl::debug_logs, "Ошибка индекса операции INSERT.\n"
