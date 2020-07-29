@@ -121,7 +121,7 @@ db_table IDBTables::GetTableCode<author>() const;
 /** \brief Собрать вектор 'values' значений столбцов БД,
   *   по переданным строкам book */
 template <>
-void IDBTables::setInsertValues<>(db_query_insert_setup *src,
+void IDBTables::setInsertValues<book>(db_query_insert_setup *src,
     const book &select_data) const;
 /** \brief Собрать вектор 'values' значений столбцов БД,
   *   по переданным строкам translation */
