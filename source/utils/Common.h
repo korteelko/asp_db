@@ -38,6 +38,12 @@
 #  define TESTS_ENABLED
 #endif  // BYCMAKE_TESTS_ENABLED
 
+#if defined (TESTING_PROJECT)
+#  define ADD_TEST_CLASS(x) friend class x;
+#else
+#  define ADD_TEST_CLASS(x)
+#endif  // TEST_PROJECT
+
 //  math defines
 #define FLOAT_ACCURACY        0.00001
 #define DOUBLE_ACCURACY       0.000000001
