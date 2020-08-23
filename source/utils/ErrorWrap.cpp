@@ -39,8 +39,8 @@ void ErrorWrap::LogIt(io_loglvl lvl) {
   const std::lock_guard<Mutex> up_lock(update_mutex_);
   if (error_ != ERROR_SUCCESS_T && !is_logged_) {
     if (!msg_.empty()) {
-      Logging::Append(lvl, "Error occurred.\n  err_msg:" + msg_ +
-          "\n  code:0x" + hex2str(error_));
+      Logging::Append(lvl, "Error occurred.\n  err_msg: " + msg_ +
+          "\n  code: " + hex2str(error_));
     }
     is_logged_ = true;
   }

@@ -77,8 +77,10 @@ private:
 };
 
 
-/** \brief Класс исключений модуля БД
-  * \note Move this class to another file */
+/**
+ * \brief Класс исключений модуля БД
+ * \note Move this class to another file
+ * */
 class DBException: public std::exception {
 public:
   DBException(merror_t error, const std::string &msg);
@@ -134,8 +136,10 @@ public:
       *id_p = id_vec.id_vec[0];
     return st;
   }
-  /** \brief Сохранить в БД вектор строк.
-    * \todo replace with generic container */
+  /**
+   * \brief Сохранить в БД вектор строк.
+   * \todo replace with generic container
+   * */
   template<class TableI>
   mstatus_t SaveVectorOfRows(const std::vector<TableI> &tis,
       id_container *id_vec_p = nullptr) {
@@ -147,11 +151,65 @@ public:
         id_container *)>(*dis, id_vec_p, &DBConnectionManager::saveRows, &sp);
     return st;
   }
+  /**
+   * \brief Сохранить в БД строки ещё не добавленные.
+   * \todo replace with generic container
+   * */
+  template<class TableI>
+  mstatus_t SaveNotExistsRows(const std::vector<TableI> &tis,
+      id_container *id_vec_p = nullptr) {
+    id_container id_vec;
+    id_vec.id_vec = std::vector<int>(tis.size());
+    size_t exists_num = 0;
+    for (size_t i = 0; i < tis.size(); ++i) {
+      std::vector<TableI> s;
+      id_vec.id_vec[i] = -1;
+      if (is_status_ok(SelectRows(tis[i], &s))) {
+        if (s.size()) {
+          exists_num++;
+          id_vec.id_vec[i] = s[0].id;
+        }
+      }
+    }
+    mstatus_t st = STATUS_DEFAULT;
+    if (exists_num == tis.size()) {
+      // все элементы оказались наместе
+      if (id_vec_p) {
+        id_vec_p->id_vec.swap(id_vec.id_vec);
+        st = id_vec_p->status = STATUS_OK;
+      }
+    } else if (exists_num == 0) {
+      // все элементы новенькие
+      st = SaveVectorOfRows(tis, id_vec_p);
+    } else {
+      // есть но не все
+      std::vector<TableI> tis_ex;
+      for (size_t i = 0; i < tis.size(); ++i)
+        if (id_vec.id_vec[i] == -1)
+          tis_ex.push_back(tis[i]);
+      id_container id_vec_ex;
+      st = SaveVectorOfRows(tis_ex, &id_vec_ex);
+      if (is_status_ok(st)) {
+        auto it_vec_ex = id_vec_ex.id_vec.begin();
+        auto it_vec = std::find_if(id_vec.id_vec.begin(), id_vec.id_vec.end(),
+            [](int id) { return id == -1;} );
+        while (it_vec_ex != id_vec_ex.id_vec.end() &&
+            it_vec != id_vec.id_vec.end()) {
+          *it_vec = *it_vec_ex;
+          it_vec = std::find_if(it_vec, id_vec.id_vec.end(),
+              [](int id) { return id == -1;} );
+        }
+        id_vec_p->id_vec.swap(id_vec.id_vec);
+        st = id_vec_p->status = STATUS_OK;
+      }
+    }
+    return st;
+  }
 
   /* select operations */
   /** \brief Вытащить из БД строки TableI по условиям из 'where' */
   template<class TableI, class ContainerT = std::vector<TableI>>
-  mstatus_t SelectRows(TableI &where, ContainerT *res) {
+  mstatus_t SelectRows(const TableI &where, ContainerT *res) {
     return selectData(tables_->GetTableCode<TableI>(), where, res);
   }
   /* table format */
@@ -234,7 +292,7 @@ private:
 
   /** \brief Собрать запрос на выборку данных */
   template <class DataT>
-  mstatus_t selectData(db_table t, DataT &where, std::vector<DataT> *res) {
+  mstatus_t selectData(db_table t, const DataT &where, std::vector<DataT> *res) {
     std::unique_ptr<db_query_select_setup> dss(
         db_query_select_setup::Init(tables_, t));
     if (dss)

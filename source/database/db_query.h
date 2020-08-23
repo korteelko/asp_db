@@ -23,7 +23,9 @@ namespace asp_db {
 class DBConnection;
 struct db_table_create_setup;
 
-/** \brief абстрактный класс запросов */
+/**
+ * \brief абстрактный класс запросов
+ * */
 class DBQuery {
 public:
   /** \brief Выполнение запроса */
@@ -55,7 +57,9 @@ typedef std::shared_ptr<DBQuery> QuerySmartPtr;
 /* todo: rename QueryContainer to QuerySequence */
 typedef std::vector<QuerySmartPtr> QueryContainer;
 
-/** \brief Запрос установить соединение с бд */
+/**
+ * \brief Запрос установить соединение с бд
+ * */
 class DBQuerySetupConnection: public DBQuery {
 public:
   DBQuerySetupConnection(DBConnection *db_ptr);
@@ -67,7 +71,9 @@ protected:
   std::string q_info() override;
 };
 
-/** \brief Запрос отключения от бд */
+/**
+ * \brief Запрос отключения от бд
+ * */
 class DBQueryCloseConnection: public DBQuery {
 public:
   DBQueryCloseConnection(DBConnection *db_ptr);
@@ -78,7 +84,9 @@ protected:
   std::string q_info() override;
 };
 
-/** \brief Запрос создания точки сохранения */
+/**
+ * \brief Запрос создания точки сохранения
+ * */
 class DBQueryAddSavePoint: public DBQuery {
 public:
   DBQueryAddSavePoint(DBConnection *ptr, const db_save_point &sp);
@@ -93,7 +101,9 @@ private:
   const db_save_point &save_point;
 };
 
-/** \brief Запрос проверки существования таблицы в бд */
+/**
+ * \brief Запрос проверки существования таблицы в бд
+ * */
 class DBQueryIsTableExists: public DBQuery {
 public:
   DBQueryIsTableExists(DBConnection *db_ptr, db_table dt, bool &is_exists);
@@ -107,7 +117,9 @@ private:
   bool &is_exists_;
 };
 
-/** \brief Запрос создания таблицы в бд */
+/**
+ * \brief Запрос создания таблицы в бд
+ * */
 class DBQueryCreateTable: public DBQuery {
 public:
   DBQueryCreateTable(DBConnection *db_ptr,
@@ -121,8 +133,10 @@ private:
   const db_table_create_setup &create_setup;
 };
 
-/** \brief Запрос обновления формата таблицы в бд
-  * \note Обновление таблицы БД */
+/**
+ * \brief Запрос обновления формата таблицы в бд
+ * \note Обновление таблицы БД
+ * */
 class DBQueryUpdateTable: public DBQuery {
 public:
   DBQueryUpdateTable(DBConnection *db_ptr,
@@ -136,7 +150,9 @@ private:
   const db_table_create_setup &update_setup;
 };
 
-/** \brief Запрос на добавление строки */
+/**
+ * \brief Запрос на добавление строки
+ * */
 class DBQueryInsertRows: public DBQuery {
 public:
   DBQueryInsertRows(DBConnection *db_ptr,
@@ -152,7 +168,9 @@ private:
   id_container *id_vec;
 };
 
-/** \brief Запрос выборки */
+/**
+ * \brief Запрос выборки
+ * */
 class DBQuerySelectRows: public DBQuery {
 public:
   DBQuerySelectRows(DBConnection *db_ptr,
@@ -168,7 +186,9 @@ private:
   db_query_select_result *result;
 };
 
-/** \brief Запрос на удаление рядов из БД */
+/**
+ * \brief Запрос на удаление рядов из БД
+ * */
 class DBQueryDeleteRows: public DBQuery {
 public:
   DBQueryDeleteRows(DBConnection *db_ptr,

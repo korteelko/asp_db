@@ -199,8 +199,8 @@ void Logging::Append(io_loglvl lvl, merror_t error_code,
     const std::string &msg) {
   if (Logging::is_aval_)
     if (lvl <= Logging::li_.loglvl)
-      Logging::Append(io_loglvl::err_logs, "Error occurred.\n  err_msg:" +
-          msg + "\n  code:0x" + hex2str(error_code));
+      Logging::Append(io_loglvl::err_logs, " Error occurred.\n  err_msg: " +
+          msg + "\n  code: " + hex2str(error_code));
 }
 
 void Logging::Append(const std::stringstream &sstr) {

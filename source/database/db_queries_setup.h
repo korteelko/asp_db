@@ -239,11 +239,16 @@ public:
 };
 
 
-/** \brief Структура для сборки INSERT запросов */
+/**
+ * \brief Структура для сборки INSERT запросов
+ * */
 struct db_query_insert_setup: public db_query_basesetup {
 public:
-  /** \brief Проверить соответствие значений полей initialized в векторе
-    *   элементов данных выборки. Для всех должны быть одинаковы */
+  /**
+   * \brief Проверить соответствие значений полей initialized в векторе
+   *   элементов данных выборки. Для всех должны быть одинаковы
+   * \note Функция для контейнера объектов, не указателей
+   * */
   template <class DataInfo>
   static bool haveConflict(const std::vector<DataInfo> &select_data) {
     if (!select_data.empty()) {
