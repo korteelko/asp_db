@@ -24,8 +24,8 @@ endif(UNIX)
 
 # OPTIONS
 if(CMAKE_BUILD_TYPE STREQUAL "Debug")
-  set(BUILD_EXAMPLES TRUE)
-  #set(TESTS_ENABLED TRUE)
+  option(BUILD_EXAMPLES "Build examples" ON)
+  option(TESTS_ENABLED "Run tests" ON)
 endif()
 
 #======================================================

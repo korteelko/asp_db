@@ -28,6 +28,21 @@
 /** \brief Использовать библиотеку libpqxx */
 #  define WITH_POSTGRESQL
 #endif  // BYCMAKE_WITH_POSTGRESQL
+#if defined(BYCMAKE_WITH_PUGIXML)
+#  define WITH_PUGIXML
+#endif  // BYCMAKE_WITH_PUGIXML
+#if defined(BYCMAKE_WITH_RAPIDJSON)
+#  define WITH_RAPIDJSON
+#endif  // BYCMAKE_WITH_RAPIDJSON
+#if defined(BYCMAKE_TESTS_ENABLED)
+#  define TESTS_ENABLED
+#endif  // BYCMAKE_TESTS_ENABLED
+
+#if defined (TESTING_PROJECT)
+#  define ADD_TEST_CLASS(x) friend class x;
+#else
+#  define ADD_TEST_CLASS(x)
+#endif  // TEST_PROJECT
 
 //  math defines
 #define FLOAT_ACCURACY        0.00001
@@ -59,7 +74,11 @@ typedef enum {
 } io_loglvl;
 
 
-/** \brief Вывести целочисленное значение в шестнадцеричном формате */
+/**
+ * \brief Вывести целочисленное значение в шестнадцеричном формате
+ * \param hex Приводимое к шестнадцетеричному представлению число
+ * \return Строка-представление
+ * */
 template <typename Integer,
     typename = std::enable_if_t<std::is_integral<Integer>::value>>
 std::string hex2str(Integer hex) {
@@ -68,38 +87,60 @@ std::string hex2str(Integer hex) {
   return hex_stream.str();
 }
 
-/** \brief Проверить допустимость текущего состояния статуса
-  * \return true если st == STATUS_DEFAULT или st == STATUS_OK */
+/**
+ * \brief Проверить допустимость текущего состояния статуса
+ * \return true если st == STATUS_DEFAULT или st == STATUS_OK
+ * */
 inline bool is_status_aval(mstatus_t status) {
   return status == STATUS_DEFAULT || status == STATUS_OK;
 }
-/** \brief Проверить валидность статуса
-  * \return true если st == STATUS_OK */
+/**
+ * \brief Проверить валидность статуса
+ * \return true если st == STATUS_OK
+ * */
 inline bool is_status_ok(mstatus_t status) {
   return status == STATUS_OK;
 }
-/** \brief Строка str заканчивается подстрокой ending */
+/**
+ * \brief Проверить валидность статуса для набора аргументов
+ * \return true если для всех аргументов is_status_ok = true
+ * */
+template <class ...Targs>
+inline bool is_status_ok(mstatus_t status, Targs ...fargs) {
+  return is_status_ok(status) && is_status_ok(fargs...);
+}
+/**
+ * \brief Строка str заканчивается подстрокой ending
+ * \brief true Если str заканчивается подстрокой ending
+ * */
 inline bool ends_with(const std::string &str, const std::string &ending) {
   if (ending.size() > str.size())
     return false;
   return std::equal(ending.rbegin(), ending.rend(), str.rbegin());
 }
-
-/** \brief Обрезать пробелы с обоих концов */
+/**
+ * \brief Обрезать пробелы с обоих концов
+ * \return Строка без начальных и конечных пробелов
+ * */
 std::string trim_str(const std::string &str);
-
-/** \brief Проверить что объект файловой системы(файл, директория, соккет,
-  *   линк, character_dev) существует */
+/**
+ * \brief Проверить что объект файловой системы(файл, директория, соккет,
+ *   линк, character_dev) существует
+ * \return true если путь path валиден
+ * */
 bool is_exist(const std::string &path);
-
-/** \brief Вернуть путь к директории содержащей файл */
+/**
+ * \brief Вернуть путь к директории содержащей файл
+ * \return Путь к директории
+ * */
 std::string dir_by_path(const std::string &path);
-
-/** \brief Разбить строку по сепаратору 'ch' записать изменения
-  *   в контейнер
-  * \param str Исходная строка
-  * \param cont_p Указатель на контейнер полученных строк
-  * \param sep Разделитель */
+/**
+ * \brief Разбить строку по сепаратору 'ch' записать изменения
+ *   в контейнер
+ * \param str Исходная строка
+ * \param cont_p Указатель на контейнер полученных строк
+ * \param sep Разделитель
+ * */
 template <class ContainerT>
 void split_str(const std::string &str, ContainerT *cont_p, char sep) {
   size_t pos = str.find(sep);

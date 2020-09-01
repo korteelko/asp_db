@@ -42,6 +42,9 @@ typedef uint32_t merror_t;
 #  define ERROR_GENERAL_T_MSG     "general error "
 #endif  // !ERROR_GENERAL_T
 
+/** \brief Подтип ошибок для модулей */
+#define ERROR_OTHER_MODULE_T      0x000f
+
 /** \brief Составить стандартную пару (код ошибки, соответствующее сообщение) */
 #define ERROR_PAIR_DEFAULT(x) x, x ## _MSG
 
