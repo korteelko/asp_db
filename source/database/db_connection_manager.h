@@ -19,6 +19,7 @@
 #include "db_query.h"
 #include "db_tables.h"
 #include "ErrorWrap.h"
+#include "Logging.h"
 #include "ThreadWrap.h"
 
 #include <exception>
@@ -145,10 +146,16 @@ public:
       id_container *id_vec_p = nullptr) {
     std::unique_ptr<db_query_insert_setup> dis(
         tables_->InitInsertSetup<TableI>(tis));
-    db_save_point sp("save_" + tables_->GetTableName<TableI>());
-    mstatus_t st = exec_wrap<const db_query_insert_setup &, id_container,
-        void (DBConnectionManager::*)(Transaction *, const db_query_insert_setup &,
-        id_container *)>(*dis, id_vec_p, &DBConnectionManager::saveRows, &sp);
+    mstatus_t st = STATUS_NOT;
+    if (dis.get()) {
+      db_save_point sp("save_" + tables_->GetTableName<TableI>());
+      st = exec_wrap<const db_query_insert_setup &, id_container,
+          void (DBConnectionManager::*)(Transaction *, const db_query_insert_setup &,
+          id_container *)>(*dis, id_vec_p, &DBConnectionManager::saveRows, &sp);
+    } else {
+      Logging::Append(io_loglvl::warn_logs, "Ошибка добавления набора строк "
+          "к БД - не инициализирован сетап добавляемыхх данных");
+    }
     return st;
   }
   /**
