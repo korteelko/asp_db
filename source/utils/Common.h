@@ -128,7 +128,7 @@ std::string trim_str(const std::string &str);
  *   линк, character_dev) существует
  * \return true если путь path валиден
  * */
-bool is_exist(const std::string &path);
+bool is_exists(const std::string &path);
 /**
  * \brief Вернуть путь к директории содержащей файл
  * \return Путь к директории

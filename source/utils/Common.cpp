@@ -24,7 +24,7 @@ std::string trim_str(const std::string &str) {
 
 /* todo: add else case */
 #ifdef CXX17
-bool is_exist(const std::string &path) {
+bool is_exists(const std::string &path) {
   return std::filesystem::exists(path);
 }
 
