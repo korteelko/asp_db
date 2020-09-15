@@ -13,7 +13,6 @@
 #if defined(WITH_POSTGRESQL)
 #  include "db_connection_postgre.h"
 #endif  // WITH_POSTGRESQL
-#include "Logging.h"
 
 #include <ctime>
 
