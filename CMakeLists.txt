@@ -42,6 +42,12 @@ include(utils_source.cmake)
 add_definitions(-DBYCMAKE_WITH_POSTGRESQL)
 set(PQXX_LIBS pqxx pq)
 
+#   spdlog
+#   https://github.com/gabime/spdlog.git
+add_subdirectory(${MODULES_DIR}/spdlog)
+include_directories(${MODULES_DIR}/spdlog/include)
+
+
 #   thread
 set(THREADS_PREFER_PTHREAD_FLAG ON)
 find_package(Threads REQUIRED)
@@ -67,6 +73,7 @@ target_link_libraries(${PROJECT_NAME}
 
   stdc++fs
   ${PQXX_LIBS}
+  spdlog
   Threads::Threads
 )
 
@@ -79,5 +86,7 @@ endif()
 # run tests
 if(TESTS_ENABLED)
   message(STATUS "Запускаем тесты")
+  enable_testing()
+  include(GoogleTest)
   add_subdirectory("${ASP_DB_ROOT}/tests/full")
 endif()

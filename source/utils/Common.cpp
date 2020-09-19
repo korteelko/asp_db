@@ -11,6 +11,21 @@
 
 #include <algorithm>
 #include <filesystem>
+#include <map>
+
+
+static std::map<io_loglvl, std::string> level_names = {
+  {no_log, "no logs"},
+  {err_logs, "err"},
+  {warn_logs, "warn"},
+  {info_logs, "info"},
+  {debug_logs, "debug"}
+};
+
+std::string io_loglvl_str(io_loglvl ll) {
+  auto l = level_names.find(ll);
+  return (l != level_names.end()) ? l->second : "undefiend io_loglvl";
+}
 
 std::string trim_str(const std::string &str) {
   if (str.empty())

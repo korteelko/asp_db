@@ -3,6 +3,7 @@
 #include "library_tables.h"
 
 #include "gtest/gtest.h"
+#include "gtest/gtest.h"
 
 #include <iostream>
 #include <filesystem>

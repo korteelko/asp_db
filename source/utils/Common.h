@@ -1,6 +1,10 @@
 /**
  * asp_therm - implementation of real gas equations of state
- *
+ * ===================================================================
+ * * Common *
+ *   Общий функционал программы - инициализация прокинутых с CMake
+ * дефайнов и т.п.
+ * ===================================================================
  *
  * Copyright (c) 2020 Mishutinski Yurii
  *
@@ -60,18 +64,43 @@ typedef uint32_t mstatus_t;
 #define STATUS_HAVE_ERROR     0x00000004
 
 // logging defines
+/**
+ * \brief Уровень логирования релиз сборки
+ * */
 #define DEFAULT_LOGLVL        0x01
+/**
+ * \brief Уровень логирования отладочной сборки
+ * */
 #define DEBUG_LOGLVL          0x0f
+/**
+ * \brief Уровни логирования
+ * */
 typedef enum {
-  /** \brief no messages */
+  /**
+   * \brief Не логировать
+   * */
   no_log = 0,
-  /** \brief only errors */
+  /**
+   * \brief Логировать только ошибки
+   * */
   err_logs = DEFAULT_LOGLVL,
-  /** \brief warning, errors */
+  /**
+   * \brief Предупреждения и ошибки
+   * */
   warn_logs,
-  /** \brief all mesages, default for debug */
+  /**
+   * \brief Логировать все сообщения кроме отладочных
+   * */
+  info_logs,
+  /**
+   * \brief Вывод всех сообщений и отладочной информации
+   * */
   debug_logs = DEBUG_LOGLVL
 } io_loglvl;
+/**
+ * \brief Уровень логирования к строковому представлению
+ * */
+std::string io_loglvl_str(io_loglvl ll);
 
 
 /**
