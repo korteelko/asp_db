@@ -47,8 +47,6 @@ if(${GTEST_FOUND})
   target_link_libraries(test_database
 
     asp_utils
-    spdlog
-
     ${FULLTEST_LIBRARIES}
     pqxx
     pq

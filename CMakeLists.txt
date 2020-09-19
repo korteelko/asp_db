@@ -78,8 +78,6 @@ target_link_directories(${PROJECT_NAME} PUBLIC ${ASP_DB_ROOT}/build)
 target_link_libraries(${PROJECT_NAME}
 
   asp_utils
-  spdlog
-
   stdc++fs
   Threads::Threads
   ${PQXX_LIBS}
