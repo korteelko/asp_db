@@ -1,5 +1,5 @@
 [submodule "lib/googletest"]
-	path = lib/googletest
+	path = lib/gtest
 	url = https://github.com/google/googletest
 [submodule "lib/spdlog"]
 	path = lib/spdlog

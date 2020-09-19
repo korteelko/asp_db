@@ -12,7 +12,7 @@ set(FULLTEST_LIBRARIES "")
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-add_subdirectory("${ASP_DB_ROOT}/lib/googletest" "lib/googletest")
+add_subdirectory("${ASP_DB_ROOT}/lib/gtest" "lib/gtest")
 list(APPEND FULLTEST_LIBRARIES gtest gtest_main)
 
 # code coverage
