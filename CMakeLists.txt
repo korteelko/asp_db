@@ -32,7 +32,6 @@ endif()
 # SOURCE
 #======================================================
 include(db_source.cmake)
-include(utils_source.cmake)
 
 #======================================================
 # LIBRARIES AND MODULES
@@ -42,15 +41,21 @@ include(utils_source.cmake)
 add_definitions(-DBYCMAKE_WITH_POSTGRESQL)
 set(PQXX_LIBS pqxx pq)
 
+#   asp_utils
+add_subdirectory(${MODULES_DIR}/asp_utils)
+include_directories(${MODULES_DIR}/asp_utils/source)
+
 #   spdlog
 #   https://github.com/gabime/spdlog.git
-add_subdirectory(${MODULES_DIR}/spdlog)
-include_directories(${MODULES_DIR}/spdlog/include)
+#add_subdirectory(${MODULES_DIR}/spdlog)
+#include_directories(${MODULES_DIR}/spdlog/include)
 
 
 #   thread
 set(THREADS_PREFER_PTHREAD_FLAG ON)
 find_package(Threads REQUIRED)
+
+include_directories(${SOURCE_ROOT}/utils)
 
 #======================================================
 # OUTPUT SETUP
@@ -69,12 +74,15 @@ foreach(OUTPUTCONFIG ${CMAKE_CONFIGURATION_TYPES})
   )
 endforeach()
 
+target_link_directories(${PROJECT_NAME} PUBLIC ${ASP_DB_ROOT}/build)
 target_link_libraries(${PROJECT_NAME}
 
-  stdc++fs
-  ${PQXX_LIBS}
+  asp_utils
   spdlog
+
+  stdc++fs
   Threads::Threads
+  ${PQXX_LIBS}
 )
 
 # add examples
@@ -87,6 +95,5 @@ endif()
 if(TESTS_ENABLED)
   message(STATUS "Запускаем тесты")
   enable_testing()
-  include(GoogleTest)
-  add_subdirectory("${ASP_DB_ROOT}/tests/full")
+  add_subdirectory("${ASP_DB_ROOT}/tests")
 endif()

@@ -4,3 +4,6 @@
 [submodule "lib/spdlog"]
 	path = lib/spdlog
 	url = https://github.com/gabime/spdlog.git
+[submodule "lib/asp_utils"]
+	path = lib/asp_utils
+	url = https://github.com/korteelko/asp_utils

@@ -50,5 +50,6 @@ add_executable(${PROJECT_NAME} library_tables.cpp main.cpp)
 target_link_libraries(${PROJECT_NAME}
 
   asp_db
+  asp_utils
   ${PQXX_LIBS}
 )
