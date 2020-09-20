@@ -7,7 +7,6 @@ project(${PROJECT_NAME})
 add_compile_options(-Wall)
 
 set(CMAKE_BUILD_TYPE Debug)
-add_definitions(-DBYCMAKE_DEBUG)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -18,14 +17,16 @@ set(SOURCE_ROOT ${CMAKE_CURRENT_SOURCE_DIR}/source)
 set(MODULES_DIR ${ASP_DB_ROOT}/lib)
 set(OUTPUT_DIR ${MODULES_DIR}/asp_db)
 
-if(UNIX)
-  add_definitions(-DOS_NIX)
-endif(UNIX)
-
 # OPTIONS
 if(CMAKE_BUILD_TYPE STREQUAL "Debug")
+  add_definitions(-DBYCMAKE_DEBUG)
+  message(STATUS "Debug build")
   option(BUILD_EXAMPLES "Build examples" ON)
   option(TESTS_ENABLED "Run tests" ON)
+else()
+  message(STATUS "Release build")
+  option(BUILD_EXAMPLES "Build examples" OFF)
+  option(TESTS_ENABLED "Run tests" OFF)
 endif()
 
 #======================================================
@@ -44,12 +45,6 @@ set(PQXX_LIBS pqxx pq)
 #   asp_utils
 add_subdirectory(${MODULES_DIR}/asp_utils)
 include_directories(${MODULES_DIR}/asp_utils/source)
-
-#   spdlog
-#   https://github.com/gabime/spdlog.git
-#add_subdirectory(${MODULES_DIR}/spdlog)
-#include_directories(${MODULES_DIR}/spdlog/include)
-
 
 #   thread
 set(THREADS_PREFER_PTHREAD_FLAG ON)
