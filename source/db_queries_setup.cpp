@@ -247,40 +247,35 @@ db_query_select_result::db_query_select_result(
   : db_query_basesetup(setup) {}
 
 /* db_where_tree */
-db_where_tree *db_where_tree::init(db_query_insert_setup *qis) {
+std::unique_ptr<db_where_tree> db_where_tree::init(db_query_insert_setup *qis) {
   /* todo: это конечно мрак */
   if (!qis)
     return nullptr;
   if (qis->values_vec.empty())
     return nullptr;
-  db_where_tree *wt = new db_where_tree();
+  std::unique_ptr<db_where_tree> wt(new db_where_tree());
   auto &row = qis->values_vec[0];
   const auto &fields = qis->fields;
   for (const auto &x : row) {
     auto i = x.first;
     if (i != db_query_basesetup::field_index_end && i < fields.size()) {
       auto &f = fields[i];
-      wt->source_.push_back(new db_condition_node(
+      wt->source_.push_back(std::make_shared<db_condition_node>(
           f.type, f.fname, x.second));
     }
   }
   if (wt->source_.size() == 1) {
     // только одно условие выборки
-    wt->root_ = wt->source_[0];
+    wt->root_ = wt->source_[0].get();
   } else if (wt->source_.size() > 1) {
-    std::generate_n(std::back_insert_iterator<std::vector<db_condition_node *>>
+    std::generate_n(std::back_insert_iterator<
+        std::vector<std::shared_ptr<db_condition_node>>>
         (wt->source_), wt->source_.size() - 1,
-        []() { return new db_condition_node(
-            db_condition_node::db_operator_t::op_and); });
+        []() { return std::make_shared<db_condition_node>
+            (db_condition_node::db_operator_t::op_and); });
     wt->construct();
   }
   return wt;
-}
-
-db_where_tree::~db_where_tree() {
-  for (auto x: source_)
-    delete x;
-  source_.clear();
 }
 
 db_where_tree::db_where_tree()
@@ -289,35 +284,35 @@ db_where_tree::db_where_tree()
 std::string db_where_tree::GetString(db_condition_node::DataToStrF dts) const {
   if (root_) {
     for_each (source_.begin(), source_.end(),
-        [](db_condition_node *c) { c->visited = false; });
+        [](auto c) { c->visited = false; });
     return root_->GetString(dts);
   }
   return "";
 }
 
-std::vector<db_condition_node *>::iterator db_where_tree::TreeBegin() {
+std::vector<std::shared_ptr<db_condition_node>>::iterator db_where_tree::TreeBegin() {
   return source_.begin();
 }
 
-std::vector<db_condition_node *>::iterator db_where_tree::TreeEnd() {
+std::vector<std::shared_ptr<db_condition_node>>::iterator db_where_tree::TreeEnd() {
   return source_.end();
 }
 
 void db_where_tree::construct() {
-  std::stack<db_condition_node *> st;
+  std::stack<std::shared_ptr<db_condition_node>> st;
   for (auto nd = source_.begin(); nd != source_.end(); ++nd) {
     if ((*nd)->IsOperator()) {
       auto top1 = st.top();
       st.pop();
       auto top2 = st.top();
       st.pop();
-      (*nd)->rigth = top1;
-      (*nd)->left = top2;
+      (*nd)->rigth = top1.get();
+      (*nd)->left = top2.get();
       st.push(*nd);
     } else {
       st.push(*nd);
     }
   }
-  root_ = st.top();
+  root_ = st.top().get();
 }
 }  // namespace asp_db

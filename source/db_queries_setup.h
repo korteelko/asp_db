@@ -107,8 +107,6 @@ public:
   /** \brief Есть ли подузлы */
   bool IsOperator() const { return !is_leafnode; }
 
-protected:
-  // db_condition_tree();
   db_condition_node(db_operator_t db_operator);
   db_condition_node(db_type t, const std::string &fname,
       const std::string &data);
@@ -335,15 +333,16 @@ inline bool db_query_select_result::isFieldName(
 }
 
 
-/** \brief Дерево where условий
-  * \note В общем и целом:
-  *   1) не очень оптимизировано
-  *   2) строки которая хочет видеть СУБД могут отличаться от того что
-  *     представлено в коде, поэтому оставим возможность их менять */
+/**
+ * \brief Дерево where условий
+ * \note В общем и целом:
+ *   1) не очень оптимизировано
+ *   2) строки которая хочет видеть СУБД могут отличаться от того что
+ *     представлено в коде, поэтому оставим возможность их менять
+ * \todo Переделать это всё
+ * */
 class db_where_tree {
 public:
-  ~db_where_tree();
-
   db_where_tree(const db_where_tree &) = delete;
   db_where_tree(db_where_tree &&) = delete;
 
@@ -355,15 +354,17 @@ public:
   std::string GetString(db_condition_node::DataToStrF dts =
        db_condition_node::DataToStr) const;
   /** \brief Условно(не упорядочены), первая нода коллекции дерева */
-  std::vector<db_condition_node *>::iterator TreeBegin();
+  std::vector<std::shared_ptr<db_condition_node>>::iterator TreeBegin();
   /** \brief Условно(не упорядочены), конечная нода коллекции дерева */
-  std::vector<db_condition_node *>::iterator TreeEnd();
+  std::vector<std::shared_ptr<db_condition_node>>::iterator TreeEnd();
 
-  /** \brief Функция собирающая обычное дерево where условий
-    *   разнесённых операторами AND
-    * \badcode Не понятно как собрать шикарное дерево с множеством
-    *   разнообразных условий */
-  static db_where_tree *init(db_query_insert_setup *ins_ptr);
+  /**
+   * \brief Функция собирающая обычное дерево where условий
+   *   разнесённых операторами AND
+   * \badcode Не понятно как собрать шикарное дерево с множеством
+   *   разнообразных условий
+   * */
+  static std::unique_ptr<db_where_tree> init(db_query_insert_setup *ins_ptr);
 
 protected:
   db_where_tree();
@@ -372,7 +373,7 @@ protected:
 
 protected:
   /** \brief Контейнер-хранилище узлов условий */
-  std::vector<db_condition_node *> source_;
+  std::vector<std::shared_ptr<db_condition_node>> source_;
   /** \brief Корень дерева условий */
   db_condition_node *root_ = nullptr;
   /** \brief Результирующая строка собранная из дерева условий */

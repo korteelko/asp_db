@@ -230,7 +230,7 @@ public:
     std::unique_ptr<db_query_delete_setup> dds(
         db_query_delete_setup::Init(tables_, tables_->GetTableCode<TableI>()));
     if (dds)
-      dds->where_condition.reset(tables_->InitWhereTree<TableI>(where));
+      tables_->InitWhereTree<TableI>(where).swap(dds->where_condition);
     db_save_point sp("delete_rows");
     return exec_wrap<const db_query_delete_setup &, void,
         void (DBConnectionManager::*)(Transaction *, const db_query_delete_setup &,
@@ -303,7 +303,7 @@ private:
     std::unique_ptr<db_query_select_setup> dss(
         db_query_select_setup::Init(tables_, t));
     if (dss)
-      dss->where_condition.reset(tables_->InitWhereTree<DataT>(where));
+      tables_->InitWhereTree<DataT>(where).swap(dss->where_condition);
     db_query_select_result result(*dss);
     auto st = exec_wrap<const db_query_select_setup &, db_query_select_result,
         void (DBConnectionManager::*)(Transaction *, const db_query_select_setup &,

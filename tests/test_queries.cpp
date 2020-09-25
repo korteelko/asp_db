@@ -22,12 +22,12 @@ TEST(db_where_tree, model_info) {
   EXPECT_TRUE(wt == nullptr);
   b.id = 101;
   b.initialized = b.f_id;
-  wt.reset(adb.InitWhereTree(b));
+  adb.InitWhereTree(b).swap(wt);
   EXPECT_EQ(trim_str(wt->GetString()), db_condition_node::DataToStr(
       db_type::type_int, TABLE_FIELD_NAME(BOOK_ID), std::to_string(b.id)));
   b.title = "ABC";
   b.initialized |= b.f_title;
-  wt.reset(adb.InitWhereTree(b));
+  adb.InitWhereTree(b).swap(wt);
   /* строка стандартными методами */
   std::string where_str1 = db_condition_node::DataToStr(
       db_type::type_int, TABLE_FIELD_NAME(BOOK_ID), std::to_string(b.id));
