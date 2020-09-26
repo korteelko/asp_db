@@ -17,6 +17,7 @@
 #include "db_defines.h"
 #include "db_queries_setup.h"
 
+#include <algorithm>
 #include <memory>
 #include <string>
 #include <vector>
@@ -24,10 +25,32 @@
 #include <stdint.h>
 
 
+/* macro */
+#define TABLE_FIELD_NAME(x) x ## _NAME
+#define TABLE_FIELD_PAIR(x) x, x ## _NAME
+
+/**
+ * \brief Макро на добавление параметра к данным добавления в БД
+ * \param field_flag Флаг наличия параметра - добавляем параметр
+ *   если select_data.initialized & field_flag != 0x0
+ * \param field_id Уникальный идентификатор поля в таблице
+ * \param str Строковое представление значения поля
+ *
+ * \note Здесь пара упоминаний неинициализированных полей:
+ *   src[db_query_insert_setup] Указатель структуру добавления данных к БД
+ *   select_data[T шаблон] Ссылка на структуру/таблицу БД
+ *   value[db_query_basesetup::row_values] Контейнер собранных значений
+ *   i[db_query_basesetup::field_index] Индекс поля в контейнере полей таблицы
+ * */
+#define insert_macro(field_flag, field_id, str) \
+  { if (select_data.initialized & field_flag) \
+      if ((i = src->IndexByFieldId(field_id)) != \
+          db_query_basesetup::field_index_end) \
+        values.emplace(i, str); }
+
 namespace asp_db {
 #define UNDEFINED_TABLE         0x00000000
 #define UNDEFINED_COLUMN        0x00000000
-
 
 /**
  * \brief Интерфейс объекта-связи таблиц для модуля базы данных
@@ -152,7 +175,6 @@ protected:
    * */
   template <class T>
   void setInsertValues(db_query_insert_setup *src, const T &select_data) const;
-
   /**
    * \brief Инициализировать сетап добавления в БД
    * \param t Идентификатор таблицы
@@ -173,6 +195,46 @@ protected:
         setInsertValues<Table>(src, x);
     return ins_setup;
   }
+  /**
+   * \brief Разбить строковое представление массива данных
+   * \param str Ссылка на строковое представление
+   * \param cont Указатель на контейнер выходных данных
+   * \param str2type Функциональный объект конвертации строкового
+   *   представления значения к значению оригинального типа.
+   *   На вход принимает ссылку на строку, выдаёт обект требуемого
+   *   типа.
+   *
+   * \note Сделал ориентированно на Postgre, не знаю унифицирован
+   *   ли формат возврата массива в SQL
+   *
+   * \todo Проблема с начальными и конечными скобками, добавил issue.
+   *   UPD: Заменил '[' и ']' на '{' и '}'
+   *
+   * \return Код(статус) результата выполнения
+   * */
+   template<class Container>
+   mstatus_t string2Container(const std::string &str, Container *cont,
+       std::function<typename Container::value_type(const std::string &)>
+       str2type = [] (const std::string &s) { return s; }) const {
+     std::string estr = str;
+     estr.erase(std::remove(estr.begin(), estr.end(), '{'), estr.end());
+     estr.erase(std::remove(estr.begin(), estr.end(), '}'), estr.end());
+     mstatus_t st = STATUS_DEFAULT;
+     if (!std::is_same<std::string, typename Container::value_type>::value) {
+       // тип значений контейнера не строковый, нужна конвертация
+       std::vector<std::string> tmp;
+       split_str(estr, &tmp, ',');
+       std::for_each(tmp.begin(), tmp.end(),
+           [&cont, str2type](auto &s) { cont->push_back(str2type(s)); });
+     } else {
+       // если нужно инициализировать контейнер строк, внесём изменения
+       //   в этом же контейнере
+       split_str(estr, cont, ',');
+       // если даже строковое значение тоже необходимо переработать
+       std::transform(cont->begin(), cont->end(), cont->begin(), str2type);
+     }
+     return st;
+   }
 };
 }  // namespace asp_db
 

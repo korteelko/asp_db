@@ -180,6 +180,23 @@ public:
     *   Так мы распаковываем вектор */
   static mstatus_t TranslateToVector(const std::string &str,
       std::vector<std::string> *vec_p);
+  /**
+   * \brief Перегрузка функции прокидывания строкового значения для
+   *   поддержания интерфейса преобразования значений полей таблицы
+   *   к их строковым представлениям
+   * */
+  static inline std::string field2str(const std::string &str) {
+    return str;
+  }
+  /**
+   * \brief Перегрузка функции приведения значения числового
+   *   поля к строковому представлению
+   * */
+  template<class T, typename = typename std::enable_if<
+      std::is_arithmetic<T>::value, T>::type>
+  static std::string field2str(const T &t) {
+    return std::to_string(t);
+  }
 };
 
 

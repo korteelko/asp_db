@@ -81,7 +81,7 @@ int add_data(DBConnectionManager &dbm) {
   // get already exists books
   dbm.SelectRows(b, &db_books);
   for (const auto &x: db_books)
-    std::cout << x;
+    Logging::Append(io_loglvl::info_logs, to_str(x));
   if (db_books.size())
     dbm.DeleteRows(b);
   mstatus_t st = dbm.SaveSingleRow(divine_comedy, &divine_comedy.id);
@@ -163,6 +163,23 @@ int add_data(DBConnectionManager &dbm) {
   dbm.DeleteRows(a);
   st = dbm.SaveVectorOfRows(aths);
 
+  /* select authors */
+  author lt;
+  lt.name = tolstoy.name;
+  lt.initialized |= author::f_name;
+  std::vector<author> slt;
+  dbm.SelectRows(lt, &slt);
+  if (slt.size()) {
+    Logging::Append(io_loglvl::info_logs, "В БД храниться информация о "
+        "нескольких книгах '" + lt.name + "'\n\t");
+    for (const auto &book: slt[0].books)
+      Logging::Append(io_loglvl::info_logs, book);
+    Logging::Append(io_loglvl::info_logs, join_container(slt[0].books, ", "));
+  } else {
+    Logging::Append(io_loglvl::info_logs,
+        "Не могу найти в таблице авторов писателя '" + lt.name + "'");
+  }
+
   return is_status_ok(st);
 }
 
@@ -173,7 +190,8 @@ int test_table() {
   DBConnectionManager dbm(&lt);
   mstatus_t st = dbm.ResetConnectionParameters(dp);
   if (!is_status_ok(st)) {
-    std::cout << "reset connection error: " << dbm.GetErrorMessage();
+    Logging::Append(io_loglvl::err_logs,
+        "reset connection error: " + dbm.GetErrorMessage());
     return -1;
   }
   std::vector<library_db_tables> tbs = {table_book,
@@ -184,7 +202,8 @@ int test_table() {
   if (is_status_ok(dbm.GetStatus())) {
     return add_data(dbm);
   } else {
-    std::cout << "Database table create error: " << dbm.GetErrorMessage();
+    Logging::Append(io_loglvl::err_logs,
+        "Database table create error: " + dbm.GetErrorMessage());
     return -2;
   }
 }

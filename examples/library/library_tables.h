@@ -26,9 +26,6 @@
 
 using namespace asp_db;
 
-#define TABLE_FIELD_NAME(x) x ## _NAME
-#define TABLE_FIELD_PAIR(x) x, x ## _NAME
-
 /* таблицы */
 /* tables */
 #define BOOK_TABLE        0x00010000

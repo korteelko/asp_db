@@ -53,9 +53,12 @@ struct book {
 
   int32_t initialized = 0;
 };
+inline std::string to_str(const book &b) {
+  return b.title + ", year: " + std::to_string(b.first_pub_year) +
+      ", lang code " + std::to_string(b.lang) + ", id " + std::to_string(b.id);
+}
 inline std::ostream &operator<< (std::ostream &stream, const book &b) {
-  return stream << b.title << ", year: " << b.first_pub_year <<
-      ", lang code " << b.lang << ", id " << b.id << std::endl;
+  return stream << to_str(b) << std::endl;
 }
 
 /** \brief Перевод */

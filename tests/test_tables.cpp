@@ -16,7 +16,9 @@
 using namespace asp_db;
 LibraryDBTables adb_;
 
-/** \brief Тестинг работы с БД */
+/**
+ * \brief Тестинг работы с БД
+ * */
 class DatabaseTablesTest: public ::testing::Test {
 protected:
   DatabaseTablesTest()
@@ -35,10 +37,13 @@ protected:
       EXPECT_TRUE(false);
     }
   }
+
   ~DatabaseTablesTest() {}
 
 protected:
-  /** \brief Менеджер подключения к БД */
+  /**
+   * \brief Менеджер подключения к БД
+   * */
   DBConnectionManager dbm_;
 };
 
@@ -54,8 +59,10 @@ TEST_F(DatabaseTablesTest, TableExists) {
   }
 }
 
-/** \brief Тест на добавлени строки к таблице моделей */
-TEST_F(DatabaseTablesTest, InsertModelInfo) {
+/**
+ * \brief Тест на добавлени книг к таблице моделей
+ * */
+TEST_F(DatabaseTablesTest, InsertBooks) {
   std::string str = "string by gtest";
   /* insert */
   book divine_comedy;
@@ -65,11 +72,15 @@ TEST_F(DatabaseTablesTest, InsertModelInfo) {
   // дата завершения
   divine_comedy.first_pub_year = 1320;
   divine_comedy.initialized = book::f_full & ~book::f_id;
-  dbm_.SaveSingleRow(divine_comedy, nullptr);
+  /* Удалим строку если она уже есть */
+  auto st = dbm_.DeleteRows(divine_comedy);
+  int dc_id = -1;
+  st = dbm_.SaveSingleRow(divine_comedy, &dc_id);
+  EXPECT_GE(dc_id, 0);
 
   /* select */
   std::vector<book> r;
-  auto st = dbm_.SelectRows(divine_comedy, &r);
+  dbm_.SelectRows(divine_comedy, &r);
 
   ASSERT_TRUE(r.size() > 0);
   EXPECT_GT(r[0].id, 0);
@@ -83,7 +94,15 @@ TEST_F(DatabaseTablesTest, InsertModelInfo) {
   dc_del.initialized = dc_del.f_id;
   st = dbm_.DeleteRows(dc_del);
   ASSERT_TRUE(is_status_ok(st));
+
+  /* check delete */
+  r.clear();
+  st = dbm_.SelectRows(divine_comedy, &r);
+  EXPECT_TRUE(r.empty());
+  ASSERT_TRUE(is_status_ok(st));
 }
+
+/* add tests async operations */
 
 int main(int argc, char **argv) {
   ::testing::InitGoogleTest(&argc, argv);

@@ -77,10 +77,10 @@ static const db_table_create_setup translation_create_setup(
  * AUTHORS
  */
 const db_fields_collection author_fields = {
-  db_variable(TABLE_FIELD_PAIR(AUTHOR_ID), db_type::type_autoinc, {.is_primary_key = true,
-      .is_unique = true, .can_be_null = false}),
-  db_variable(TABLE_FIELD_PAIR(AUTHOR_NAME), db_type::type_text, {.is_primary_key = true,
-      .can_be_null = false}),
+  db_variable(TABLE_FIELD_PAIR(AUTHOR_ID), db_type::type_autoinc, {
+      .is_primary_key = true, .is_unique = true, .can_be_null = false}),
+  db_variable(TABLE_FIELD_PAIR(AUTHOR_NAME), db_type::type_text, {
+      .is_primary_key = true, .can_be_null = false}),
   db_variable(TABLE_FIELD_PAIR(AUTHOR_BORN_YEAR), db_type::type_int, {}),
   db_variable(TABLE_FIELD_PAIR(AUTHOR_DIED_YEAR), db_type::type_int, {}),
   db_variable(TABLE_FIELD_PAIR(AUTHOR_BOOKS), db_type::type_text,
@@ -101,7 +101,8 @@ std::string LibraryDBTables::GetTableName(db_table t) const  {
   auto x= ns_tfs::str_tables.find(t);
   return (x != ns_tfs::str_tables.end()) ? x->second: "";
 }
-const db_fields_collection *LibraryDBTables::GetFieldsCollection(db_table t) const {
+const db_fields_collection *LibraryDBTables::GetFieldsCollection(
+   db_table t) const {
  const db_fields_collection *result = nullptr;
   switch (t) {
     case table_book:
@@ -143,7 +144,8 @@ std::string LibraryDBTables::GetIdColumnName(db_table dt) const {
   }
   return name;
 }
-const db_table_create_setup &LibraryDBTables::CreateSetupByCode(db_table dt) const {
+const db_table_create_setup &LibraryDBTables::CreateSetupByCode(
+   db_table dt) const {
  switch (dt) {
     case table_book:
       return ns_tfs::book_create_setup;
@@ -200,25 +202,13 @@ void IDBTables::setInsertValues<book>(db_query_insert_setup *src,
   /* insert all data */
   db_query_basesetup::row_values values;
   db_query_basesetup::field_index i;
-  // пример для удаления
-  if (select_data.IsFlagSet(book::f_id)) {
-    if (select_data.id > 0) {
-      if ((i = src->IndexByFieldId(BOOK_ID)) != db_query_basesetup::field_index_end)
-        values.emplace(i, std::to_string(select_data.id));
-    }
-  }
-  if (select_data.IsFlagSet(book::f_title)) {
-    if ((i = src->IndexByFieldId(BOOK_TITLE)) != db_query_basesetup::field_index_end)
-      values.emplace(i, select_data.title);
-  }
-  if (select_data.IsFlagSet(book::f_pub_year)) {
-    if ((i = src->IndexByFieldId(BOOK_PUB_YEAR)) != db_query_basesetup::field_index_end)
-      values.emplace(i, std::to_string(select_data.first_pub_year));
-  }
-  if (select_data.IsFlagSet(book::f_lang)) {
-    if ((i = src->IndexByFieldId(BOOK_LANG)) != db_query_basesetup::field_index_end)
-      values.emplace(i, std::to_string(select_data.lang));
-  }
+  if (select_data.id > 0)
+    insert_macro(book::f_id, BOOK_ID, std::to_string(select_data.id));
+  insert_macro(book::f_title, BOOK_TITLE, select_data.title);
+  insert_macro(book::f_pub_year, BOOK_PUB_YEAR,
+      std::to_string(select_data.first_pub_year));
+  insert_macro(book::f_lang, BOOK_LANG,
+      std::to_string(select_data.lang));
   src->values_vec.emplace_back(values);
 }
 /** \brief Собрать вектор 'values' значений столбцов БД,
@@ -228,30 +218,18 @@ void IDBTables::setInsertValues<translation>(db_query_insert_setup *src,
     const translation &select_data) const {
   db_query_basesetup::row_values values;
   db_query_basesetup::field_index i;
-  // пример для удаления
-  if (select_data.IsFlagSet(translation::f_id)) {
-    if (select_data.id > 0) {
-      if ((i = src->IndexByFieldId(TRANS_ID)) != db_query_basesetup::field_index_end)
-        values.emplace(i, std::to_string(select_data.id));
-    }
-  }
-  if (select_data.IsFlagSet(translation::f_book_p)) {
-    if (select_data.book_p.first > 0)
-      if ((i = src->IndexByFieldId(TRANS_BOOK_ID)) != db_query_basesetup::field_index_end)
-        values.emplace(i, std::to_string(select_data.book_p.first));
-  }
-  if (select_data.IsFlagSet(translation::f_lang)) {
-    if ((i = src->IndexByFieldId(TRANS_LANG)) != db_query_basesetup::field_index_end)
-      values.emplace(i, std::to_string(select_data.lang));
-  }
-  if (select_data.IsFlagSet(translation::f_tr_name)) {
-    if ((i = src->IndexByFieldId(TRANS_TRANS_TITLE)) != db_query_basesetup::field_index_end)
-      values.emplace(i, select_data.translated_name);
-  }
-  if (select_data.IsFlagSet(translation::f_translators)) {
-    if ((i = src->IndexByFieldId(TRANS_TRANSLATORS)) != db_query_basesetup::field_index_end)
-      values.emplace(i, select_data.translators);
-  }
+  if (select_data.id > 0)
+    insert_macro(translation::f_id, TRANS_ID,
+        std::to_string(select_data.id));
+  if (select_data.book_p.first > 0)
+    insert_macro(translation::f_book_p, TRANS_BOOK_ID,
+        std::to_string(select_data.book_p.first));
+  insert_macro(translation::f_lang, TRANS_LANG,
+      std::to_string(select_data.lang));
+  insert_macro(translation::f_tr_name, TRANS_TRANS_TITLE,
+      select_data.translated_name);
+  insert_macro(translation::f_translators, TRANS_TRANSLATORS,
+      select_data.translators);
   src->values_vec.emplace_back(values);
 }
 /** \brief Собрать вектор 'values' значений столбцов БД,
@@ -261,31 +239,16 @@ void IDBTables::setInsertValues<author>(db_query_insert_setup *src,
     const author &select_data) const {
   db_query_basesetup::row_values values;
   db_query_basesetup::field_index i;
-  // пример для удаления
-  if (select_data.IsFlagSet(author::f_id)) {
-    if (select_data.id > 0) {
-      if ((i = src->IndexByFieldId(AUTHOR_ID)) != db_query_basesetup::field_index_end)
-        values.emplace(i, std::to_string(select_data.id));
-    }
-  }
-  if (select_data.IsFlagSet(author::f_name)) {
-    if ((i = src->IndexByFieldId(AUTHOR_NAME)) != db_query_basesetup::field_index_end)
-      values.emplace(i, select_data.name);
-  }
-  if (select_data.IsFlagSet(author::f_b_year)) {
-    if ((i = src->IndexByFieldId(AUTHOR_BORN_YEAR)) != db_query_basesetup::field_index_end)
-      values.emplace(i, std::to_string(select_data.born_year));
-  }
-  if (select_data.IsFlagSet(author::f_d_year)) {
-    if ((i = src->IndexByFieldId(AUTHOR_DIED_YEAR)) != db_query_basesetup::field_index_end)
-      values.emplace(i, std::to_string(select_data.died_year));
-  }
-  if (select_data.IsFlagSet(author::f_books)) {
-    if (select_data.books.size()) {
-      if ((i = src->IndexByFieldId(AUTHOR_BOOKS)) != db_query_basesetup::field_index_end)
-        values.emplace(i, db_variable::TranslateFromVector(select_data.books));
-    }
-  }
+  if (select_data.id > 0)
+    insert_macro(author::f_id, AUTHOR_ID, std::to_string(select_data.id));
+  insert_macro(author::f_name, AUTHOR_NAME, select_data.name);
+  insert_macro(author::f_b_year, AUTHOR_BORN_YEAR,
+      std::to_string(select_data.born_year));
+  insert_macro(author::f_d_year, AUTHOR_DIED_YEAR,
+      std::to_string(select_data.died_year));
+  if (select_data.books.size())
+    insert_macro(author::f_books, AUTHOR_BOOKS,
+        db_variable::TranslateFromVector(select_data.books));
   src->values_vec.emplace_back(values);
 }
 
@@ -352,6 +315,8 @@ void IDBTables::SetSelectData<author>(db_query_select_result *src,
       } else if (src->isFieldName(TABLE_FIELD_NAME(AUTHOR_DIED_YEAR), src->fields[col.first])) {
         a.died_year = std::atoi(col.second.c_str());
       } else if (src->isFieldName(TABLE_FIELD_NAME(AUTHOR_BOOKS), src->fields[col.first])) {
+        string2Container(col.second, &a.books);
+        /*
         std::vector<std::string> book_ids;
         col.second.erase(std::remove(col.second.begin(), col.second.end(), '['), col.second.end());
         col.second.erase(std::remove(col.second.begin(), col.second.end(), ']'), col.second.end());
@@ -359,6 +324,7 @@ void IDBTables::SetSelectData<author>(db_query_select_result *src,
         if (!book_ids.empty())
           for (const auto &x: book_ids)
             a.books.push_back(x);
+      */
       }
     }
     out_vec->push_back(std::move(a));

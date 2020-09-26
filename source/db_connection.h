@@ -22,7 +22,9 @@
 #include "db_tables.h"
 #include "ErrorWrap.h"
 
+#include <functional>
 #include <string>
+#include <type_traits>
 #include <utility>
 #include <vector>
 
@@ -32,59 +34,105 @@
 #endif  // !IS_DEBUG_MODE
 
 namespace asp_db {
-/** \brief Структура содержит параметры подключения */
+/**
+ * \brief Структура параметров подключения
+ * */
 struct db_parameters {
 public:
-  /** \brief Флаг блокирования физического подключения к базе данных, просто
-    * выводить получившееся запросы в stdout(или логировать) */
+  /**
+   * \brief Флаг блокирования физического подключения к базе данных, просто
+   * выводить получившееся запросы в stdout(или логировать)
+   * */
   bool is_dry_run;
-  /** \brief тип клиента */
+  /**
+   * \brief Тип клиента
+   * */
   db_client supplier;
-  /** \brief параметры подключения базы данных
-    * \note сделаю как в джанго */
+  /* Параметры подключения базы данных */
+  /**
+   * \brief Имя базы данных
+   * */
   std::string name,
+  /**
+   * \brief Имя пользователя
+   * */
               username,
+  /**
+   * \brief Пароль пользователя
+   * */
               password,
+  /**
+   * \brief url базы данных
+   * */
               host;
   int port;
 
 public:
   db_parameters();
 
-  /** \brief Получить информацию о параметрах соединения с БД */
+  /**
+   * \brief Получить информацию о параметрах соединения с БД
+   * \note Вывод не форматирован
+   * */
   std::string GetInfo() const;
 };
 
 
-/* develop: может ещё интерфейс сделать, а потом
- *   абстрактный класс */
-/** \brief Абстрактный класс подключения к БД */
+/**
+ * \brief Абстрактный класс подключения к БД
+ * \todo Может ещё интерфейс сделать, а потом абстрактный класс
+ * */
 class DBConnection {
+  ADD_TEST_CLASS(DBConnectionProxy)
 public:
   virtual ~DBConnection();
 
-  /** \brief Добавить метку сохранения */
+  /**
+   * \brief Добавить метку сохранения
+   * \param sp Ссылка на добавляемую точки сохранения
+   * */
   virtual mstatus_t AddSavePoint(const db_save_point &sp) = 0;
-  /** \brief Откатиться к метке сохранения */
+  /**
+   * \brief Откатиться к метке сохранения
+   * \param sp Ссылка на точку сохранения отката
+   * */
   virtual void RollbackToSavePoint(const db_save_point &sp) = 0;
 
-  /** \brief Установка соединения */
+  /**
+   * \brief Установка соединения
+   * */
   virtual mstatus_t SetupConnection() = 0;
-  /** \brief Закрытие соединения */
+  /**
+   * \brief Закрытие соединения
+   */
   virtual void CloseConnection() = 0;
 
-  /** \brief Проверить существование таблицы */
+  /**
+   * \brief Проверить существование таблицы
+   * \param t Идентификатор таблицы
+   * \param is_exists Указатель на инициализируемый флаг существования таблицы
+   * */
   virtual mstatus_t IsTableExists(db_table t, bool *is_exists) = 0;
-  /** \brief Вытащить формат таблицы из СУБД */
+  /**
+   * \brief Вытащить формат таблицы из СУБД
+   * */
   virtual mstatus_t GetTableFormat(db_table t, db_table_create_setup *fields) = 0;
-  /** \brief Проверить формат таблицы
-    * \note Как метод 'UpdateTable', только не изменяет состояние таблицы */
+  /**
+   * \brief Проверить формат таблицы
+   * \note Как метод 'UpdateTable', только не изменяет состояние таблицы
+   * */
   virtual mstatus_t CheckTableFormat(const db_table_create_setup &fields) = 0;
-  /** \brief Обновить формат таблицы */
+  /**
+   * \brief Обновить формат таблицы
+   * */
   virtual mstatus_t UpdateTable(const db_table_create_setup &fields) = 0;
-  /** \brief Создать таблицу */
+  /**
+   * \brief Создать таблицу
+   * */
   virtual mstatus_t CreateTable(const db_table_create_setup &fields) = 0;
-  /** \brief Удалить таблицу */
+  /**
+   * \brief Удалить таблицу
+   * */
   virtual mstatus_t DropTable(const db_table_drop_setup &drop) = 0;
 
   /** \brief Добавить новые строки в БД, выданные id записать в
@@ -146,33 +194,50 @@ protected:
   virtual std::stringstream setupUpdateString(
       const db_query_update_setup &fields);
 
-  /** \brief собрать строку поля БД по значению db_variable
-    * \note Оказалось завязано на интерпретацию переменных
-    * \todo Собственно заменить прямые обращение на
-    *   вызовы виртуальных функций
-    */
+  /**
+   * \brief Собрать строку поля БД по значению db_variable
+   * \note Оказалось завязано на интерпретацию переменных
+   *
+   * \todo Собственно заменить прямые обращение на
+   *   вызовы виртуальных функций
+   * */
   virtual std::string db_variable_to_string(const db_variable &dv) = 0;
-  /** \brief собрать строку сложный уникальный парметр */
+  /**
+   * \brief Собрать строку сложный уникальный парметр
+   * */
   virtual std::string db_unique_constrain_to_string(
       const db_table_create_setup &cs);
-  /** \brief собрать строку ссылки на другую таблицу
-    *   по значению db_reference */
+  /**
+   * \brief Собрать строку ссылки на другую таблицу
+   *   по значению db_reference
+   * */
   virtual std::string db_reference_to_string(const db_reference &ref);
-  /** \brief собрать строку первичного ключа */
+  /**
+   * \brief Собрать строку первичного ключа
+   * */
   virtual std::string db_primarykey_to_string(const db_complex_pk &pk);
-
-  /** \brief Подключение к БД сымитировано */
+  /**
+   * \brief Подключение к БД сымитировано
+   * */
   bool isDryRun();
 
 protected:
   ErrorWrap error_;
-  /** \brief Статус подключения */
+  /**
+   * \brief Статус подключения
+   * */
   mstatus_t status_;
-  /** \brief Параметры подключения к базе данных */
+  /**
+   * \brief Параметры подключения к базе данных
+   * */
   db_parameters parameters_;
-  /** \brief Указатель на имплементацию таблиц */
+  /**
+   * \brief Указатель на имплементацию таблиц
+   * */
   const IDBTables *tables_;
-  /** \brief Флаг подключения к бд */
+  /**
+   * \brief Флаг подключения к бд
+   * */
   bool is_connected_;
 };
 }  // namespace asp_db

@@ -309,7 +309,7 @@ private:
         void (DBConnectionManager::*)(Transaction *, const db_query_select_setup &,
         db_query_select_result *)>(*dss, &result, &DBConnectionManager::selectRows,
         nullptr);
-    if (st == STATUS_OK)
+    if (is_status_ok(st))
       tables_->SetSelectData(&result, res);
     return st;
   }
@@ -346,7 +346,7 @@ private:
 #endif  // CXX17
   /** \brief Параметры текущего подключения к БД */
   db_parameters parameters_;
-  /** \brief */
+  /** \brief Указатель на С++ интерфейс имплементации таблиц БД */
   const IDBTables *tables_;
   /* todo: replace with connection pull */
   /** \brief Указатель иницианилизированное подключение */

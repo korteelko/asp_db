@@ -19,6 +19,7 @@ TEST(db_where_tree, model_info) {
   /* empty(for 'select' it is all data) */
   b.initialized = 0;
   std::unique_ptr<db_where_tree> wt(adb.InitWhereTree(b));
+  /* todo: тест валится потому что модуль db_where_tree нужно переработать */
   EXPECT_TRUE(wt == nullptr);
   b.id = 101;
   b.initialized = b.f_id;
