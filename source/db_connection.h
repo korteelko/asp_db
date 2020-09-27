@@ -21,6 +21,7 @@
 #include "db_query.h"
 #include "db_tables.h"
 #include "ErrorWrap.h"
+#include "Logging.h"
 
 #include <functional>
 #include <string>
@@ -169,7 +170,8 @@ protected:
   /* todo: add to parameters of constructor link to class
    *   DBConnectionCreator for closing all
    *   DBConnection inheritance classes */
-  DBConnection(const IDBTables *tables, const db_parameters &parameters);
+  DBConnection(const IDBTables *tables, const db_parameters &parameters,
+      PrivateLogging *logger);
 
   /* функции сбора строки запроса */
   /** \brief Сбор строки запроса создания точки сохранения */
@@ -230,6 +232,12 @@ protected:
    * \brief Подключение к БД сымитировано
    * */
   bool isDryRun();
+  /**
+   * \brief Прокинуть сообщение на логгер(логгеры)
+   * \todo Maybe inline сделать
+   * */
+  void passToLogger(io_loglvl ll, const std::string &logger,
+      const std::string &msg);
 
 protected:
   ErrorWrap error_;
@@ -245,6 +253,10 @@ protected:
    * \brief Указатель на имплементацию таблиц
    * */
   const IDBTables *tables_;
+  /**
+   * \brief Указатель на логгер операций бд
+   * */
+  PrivateLogging *logger_ = nullptr;
   /**
    * \brief Флаг подключения к бд
    * */

@@ -136,8 +136,8 @@ db_reference_act GetReferenceAct(char postgre_symbol) {
 }  // namespace postgresql_impl
 
 DBConnectionPostgre::DBConnectionPostgre(const IDBTables *tables,
-    const db_parameters &parameters)
-  : DBConnection(tables, parameters) {}
+    const db_parameters &parameters, PrivateLogging *logger)
+  : DBConnection(tables, parameters, logger) {}
 
 DBConnectionPostgre::DBConnectionPostgre(const DBConnectionPostgre &r)
   : DBConnection(r) {
@@ -150,6 +150,7 @@ DBConnectionPostgre &DBConnectionPostgre::operator=(
     // копируем
     parameters_ = r.parameters_;
     tables_ = r.tables_;
+    logger_ = r.logger_;
     // установить дефолтные значения
     error_.Reset();
     status_ = STATUS_DEFAULT;
@@ -220,8 +221,10 @@ mstatus_t DBConnectionPostgre::SetupConnection() {
     }
   } else {
     status_ = STATUS_OK;
-    Logging::Append(io_loglvl::debug_logs, "dry_run connect:" + connect_str);
-    Logging::Append(io_loglvl::debug_logs, "dry_run transaction begin");
+    passToLogger(io_loglvl::info_logs, POSTGRE_DRYRUN_LOGGER,
+        "dry_run connect:" + connect_str);
+    passToLogger(io_loglvl::info_logs, POSTGRE_DRYRUN_LOGGER,
+        "dry_run transaction begin");
   }
   return status_;
 }
@@ -241,7 +244,8 @@ void DBConnectionPostgre::CloseConnection() {
   }
   if (isDryRun()) {
     status_ = STATUS_OK;
-    Logging::Append(io_loglvl::debug_logs, "dry_run commit and disconect");
+    passToLogger(io_loglvl::info_logs, POSTGRE_DRYRUN_LOGGER,
+        "dry_run commit and disconect");
   }
 }
 

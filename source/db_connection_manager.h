@@ -267,7 +267,6 @@ private:
      * */
     std::unique_ptr<DBConnection> initDBConnection(const IDBTables *tables,
         const db_parameters &parameters);
-
     /**
      * \brief Создать копию оригинального соединения для
      *   организации параллельных запросов к БД
@@ -276,8 +275,15 @@ private:
      * \return Указатель на реализацию подключения или nullptr
      * */
     static std::shared_ptr<DBConnection> cloneConnection(DBConnection *orig);
-  };
 
+  private:
+    /**
+     * \brief Логгер модуля БД
+     * */
+    static PrivateLogging db_logger_;
+  };
+  /* declare short name for DBConnectionCreator  */
+  typedef DBConnectionManager::DBConnectionCreator ConnectionCreator;
 
 private:
   /** \brief Обёртка над функционалом сбора и выполнения транзакции:
@@ -377,14 +383,17 @@ private:
 #endif  // CXX17
   /** \brief Параметры текущего подключения к БД */
   db_parameters parameters_;
-  /** \brief Указатель на С++ интерфейс имплементации таблиц БД */
+  /**
+   * \brief Указатель на С++ интерфейс имплементации таблиц БД
+   * */
   const IDBTables *tables_;
   /* todo: replace with connection pull */
-  /** \brief Указатель иницианилизированное подключение */
+  /**
+   * \brief Указатель иницианилизированное подключение
+   * \note Мэйби контейнер??? Хотя лучше несколько мэнеджеров держать
+   * */
   std::unique_ptr<DBConnection> db_connection_;
 };
-
-
 }  // namespace asp_db
 
 #endif  // !_DATABASE__DB_CONNECTION_MANAGER_H_

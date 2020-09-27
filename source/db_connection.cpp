@@ -10,7 +10,6 @@
 #include "db_connection.h"
 
 #include "db_connection_manager.h"
-#include "Logging.h"
 
 #include <functional>
 #include <map>
@@ -22,7 +21,7 @@
 namespace asp_db {
 /* db_parameters */
 db_parameters::db_parameters()
-  : is_dry_run(true), supplier(db_client::NOONE) {}
+  : supplier(db_client::NOONE), is_dry_run(true) {}
 
 std::string db_parameters::GetInfo() const {
   std::string info = "Параметры базы данных:\n";
@@ -35,9 +34,9 @@ std::string db_parameters::GetInfo() const {
 
 /* DBConnection */
 DBConnection::DBConnection(const IDBTables *tables,
-    const db_parameters &parameters)
+    const db_parameters &parameters, PrivateLogging *logger)
   : status_(STATUS_DEFAULT), parameters_(parameters),
-    tables_(tables), is_connected_(false) {
+    tables_(tables), logger_(logger), is_connected_(false) {
   if (!tables_)
     throw DBException(ERROR_DB_CONNECTION,
         "Попытка инициализовать DBConnection пустым "
@@ -45,13 +44,14 @@ DBConnection::DBConnection(const IDBTables *tables,
 }
 
 DBConnection::DBConnection(const DBConnection &r)
-  : parameters_(r.parameters_), tables_(r.tables_) {}
+  : parameters_(r.parameters_), tables_(r.tables_), logger_(r.logger_) {}
 
 DBConnection &DBConnection::operator=(const DBConnection &r) {
   if (&r != this) {
     // копируем
     parameters_ = db_parameters(r.parameters_);
     tables_ = r.tables_;
+    logger_ = r.logger_;
     // установить дефолтные значения
     error_.Reset();
     status_ = STATUS_DEFAULT;
@@ -251,5 +251,16 @@ std::string DBConnection::db_primarykey_to_string(
 
 bool DBConnection::isDryRun() {
   return parameters_.is_dry_run;
+}
+
+void DBConnection::passToLogger(io_loglvl ll, const std::string &logger,
+    const std::string &msg) {
+  if (logger_) {
+    // зарегистрирован специальный логгер
+    logger_->Append(ll, logger, msg);
+  } else {
+    // прокинуть на общий
+    Logging::Append(ll, msg);
+  }
 }
 }  // namespace asp_db

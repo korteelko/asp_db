@@ -20,6 +20,9 @@
 
 
 namespace asp_db {
+logging_cfg postgres_logging_cfg(POSTGRE_DRYRUN_LOGGER, io_loglvl::info_logs,
+    POSTGRE_DRYRUN_LOGFILE, DEFAULT_MAXLEN_LOGFILE, DEFAULT_FLUSH_RATE, false);
+
 // db_parameters::db_parameters()
 //   : supplier(db_client::NOONE) {}
 
@@ -261,6 +264,7 @@ mstatus_t DBConnectionManager::tryExecuteTransaction(Transaction &tr) {
 }
 
 /* DBConnection::DBConnectionInstance */
+PrivateLogging DBConnectionManager::DBConnectionCreator::db_logger_;
 DBConnectionManager::DBConnectionCreator::DBConnectionCreator() {}
 
 std::unique_ptr<DBConnection>
@@ -272,7 +276,11 @@ DBConnectionManager::DBConnectionCreator::initDBConnection(
       break;
   #if defined(WITH_POSTGRESQL)
     case db_client::POSTGRESQL:
-      connect = std::make_unique<DBConnectionPostgre>(tables, parameters);
+      // зарегистрировать логгер для postgre
+      if (!ConnectionCreator::db_logger_.IsRegistered(postgres_logging_cfg))
+        ConnectionCreator::db_logger_.Register(postgres_logging_cfg);
+      connect = std::make_unique<DBConnectionPostgre>(
+          tables, parameters, &ConnectionCreator::db_logger_);
       break;
   #endif  // WITH_POSTGRESQL
     // TODO: можно тут ошибку установить

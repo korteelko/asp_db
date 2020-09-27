@@ -23,6 +23,9 @@
 #include <string>
 
 
+#define POSTGRE_DRYRUN_LOGGER   "postgre_logger"
+#define POSTGRE_DRYRUN_LOGFILE  "postgre_logs"
+
 namespace asp_db {
 // смотри страницу:
 // https://www.tutorialspoint.com/postgresql/postgresql_c_cpp.htm
@@ -46,7 +49,8 @@ class DBConnectionPostgre final: public DBConnection {
   };
 
 public:
-  DBConnectionPostgre(const IDBTables *tables, const db_parameters &parameters);
+  DBConnectionPostgre(const IDBTables *tables, const db_parameters &parameters,
+      PrivateLogging *logger = nullptr);
 
   ~DBConnectionPostgre() override;
 
@@ -138,9 +142,11 @@ private:
         status_ = STATUS_OK;
         // dry_run_ programm setup
         if (sstr_len) {
-          Logging::Append(io_loglvl::debug_logs, "dry_run: " + sstr.str());
+          passToLogger(io_loglvl::info_logs, POSTGRE_DRYRUN_LOGGER,
+              "dry_run: " + sstr.str());
         } else {
-          Logging::Append(io_loglvl::debug_logs, "dry_run: 'empty query!'");
+          passToLogger(io_loglvl::info_logs, POSTGRE_DRYRUN_LOGGER,
+              "dry_run: 'empty query!'");
         }
       } else {
         // error - not connected
@@ -282,7 +288,6 @@ private:
     std::unique_ptr<pqxx::nontransaction> work_ = nullptr;
 
   } pqxx_work;
-  // add result data for select queries for example, or IsTableExist
 };
 }  // namespace asp_db
 
