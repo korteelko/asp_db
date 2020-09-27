@@ -77,11 +77,15 @@ struct where_string_set {
     } else if (t == db_type::type_time) {
       return f + " = " + DBConnectionPostgre::TimeToPostgreTime(v);
     }
-    return (t == db_type::type_char_array || t == db_type::type_text) ?
+    bool need_quote = (t == db_type::type_char_array || t == db_type::type_text);
+    // для опции dry_run указатель не проинциализирован
+    return (need_quote && tr) ?
         f + " = " + tr->quote(v): f + " = " + v;
   }
 public:
-  /** \brief Указатель на pqxx транзакцию */
+  /**
+   * \brief Указатель на pqxx транзакцию
+   * */
   pqxx::nontransaction *tr;
 };
 
@@ -135,8 +139,32 @@ DBConnectionPostgre::DBConnectionPostgre(const IDBTables *tables,
     const db_parameters &parameters)
   : DBConnection(tables, parameters) {}
 
+DBConnectionPostgre::DBConnectionPostgre(const DBConnectionPostgre &r)
+  : DBConnection(r) {
+  pqxx_work.ReleaseConnection();
+}
+
+DBConnectionPostgre &DBConnectionPostgre::operator=(
+    const DBConnectionPostgre &r) {
+  if (&r != this) {
+    // копируем
+    parameters_ = r.parameters_;
+    tables_ = r.tables_;
+    // установить дефолтные значения
+    error_.Reset();
+    status_ = STATUS_DEFAULT;
+    is_connected_ = false;
+    pqxx_work.ReleaseConnection();
+  }
+  return *this;
+}
+
 DBConnectionPostgre::~DBConnectionPostgre() {
   CloseConnection();
+}
+
+std::shared_ptr<DBConnection> DBConnectionPostgre::CloneConnection() {
+  return std::shared_ptr<DBConnectionPostgre>(new DBConnectionPostgre(*this));
 }
 
 DBConnectionPostgre::db_field_info::db_field_info(const std::string &name,
@@ -204,6 +232,7 @@ void DBConnectionPostgre::CloseConnection() {
     if (pqxx_work.IsAvailable())
       pqxx_work.GetTransaction()->exec("commit;");
     pqxx_work.pconnect_->disconnect();
+    pqxx_work.ReleaseConnection();
     is_connected_ = false;
     error_.Reset();
     if (IS_DEBUG_MODE)

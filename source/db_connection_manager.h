@@ -50,6 +50,7 @@ public:
   ErrorWrap GetError() const;
   mstatus_t GetResult() const;
   TransactionInfo GetInfo() const;
+  DBConnection *GetConnection() const;
 
 private:
   ErrorWrap error_;
@@ -246,7 +247,37 @@ public:
   std::string GetErrorMessage();
 
 private:
-  class DBConnectionCreator;
+  /**
+   * \brief Закрытый класс создания соединений с БД
+   * */
+  class DBConnectionCreator {
+    friend class DBConnectionManager;
+    OWNER(DBConnectionManager);
+
+  private:
+    DBConnectionCreator();
+
+    /**
+     * \brief Инициализировать соединение с БД
+     * \param tables Указатель на класс реализующий
+     *   операции с таблицами БД
+     * \param parameters Параметры подключения
+     *
+     * \return Указатель на реализацию подключения или nullptr
+     * */
+    std::unique_ptr<DBConnection> initDBConnection(const IDBTables *tables,
+        const db_parameters &parameters);
+
+    /**
+     * \brief Создать копию оригинального соединения для
+     *   организации параллельных запросов к БД
+     * \param orig Указатель на оригинал подключения
+     *
+     * \return Указатель на реализацию подключения или nullptr
+     * */
+    static std::shared_ptr<DBConnection> cloneConnection(DBConnection *orig);
+  };
+
 
 private:
   /** \brief Обёртка над функционалом сбора и выполнения транзакции:
@@ -265,26 +296,26 @@ private:
       status_ = CheckConnection();
     mstatus_t trans_st;
     if (db_connection_ && is_status_aval(status_)) {
-      Transaction tr(db_connection_.get());
-      tr.AddQuery(QuerySmartPtr(
-          new DBQuerySetupConnection(db_connection_.get())));
-      // добавить точку сохранения, если есть необходимость
-      if (sp_ptr)
-        tr.AddQuery(QuerySmartPtr(
-            new DBQueryAddSavePoint(db_connection_.get(), *sp_ptr)));
-      // добавить специализированные запросы
-      std::invoke(setup_m, *this, &tr, data, res);
-      tr.AddQuery(QuerySmartPtr(
-          new DBQueryCloseConnection(db_connection_.get())));
-      try {
-        trans_st = tryExecuteTransaction(tr);
-      } catch (DBException &e) {
-        e.LogException();
-        trans_st = STATUS_HAVE_ERROR;
-      } catch (std::exception &e) {
-        trans_st = STATUS_HAVE_ERROR;
-        error_.SetError(ERROR_DB_OPERATION, "Нерегламентированная ошибка" +
-            std::string(e.what()));
+      auto c = DBConnectionCreator().cloneConnection(db_connection_.get());
+      if (c.get()) {
+        Transaction tr(c.get());
+        tr.AddQuery(QuerySmartPtr(new DBQuerySetupConnection(c.get())));
+        // добавить точку сохранения, если есть необходимость
+        if (sp_ptr)
+          tr.AddQuery(QuerySmartPtr(new DBQueryAddSavePoint(c.get(), *sp_ptr)));
+        // добавить специализированные запросы
+        std::invoke(setup_m, *this, &tr, data, res);
+        tr.AddQuery(QuerySmartPtr(new DBQueryCloseConnection(c.get())));
+        try {
+          trans_st = tryExecuteTransaction(tr);
+        } catch (DBException &e) {
+          e.LogException();
+          trans_st = STATUS_HAVE_ERROR;
+        } catch (std::exception &e) {
+          trans_st = STATUS_HAVE_ERROR;
+          error_.SetError(ERROR_DB_OPERATION, "Нерегламентированная ошибка" +
+              std::string(e.what()));
+        }
       }
     } else {
       error_.SetError(ERROR_DB_CONNECTION, "Не удалось установить "
@@ -354,16 +385,6 @@ private:
 };
 
 
-/** \brief Закрытый класс создания соединений с БД */
-class DBConnectionManager::DBConnectionCreator {
-  friend class DBConnectionManager;
-
-private:
-  DBConnectionCreator();
-
-  DBConnection *InitDBConnection(const IDBTables *tables,
-      const db_parameters &parameters);
-};
 }  // namespace asp_db
 
 #endif  // !_DATABASE__DB_CONNECTION_MANAGER_H_

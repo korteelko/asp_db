@@ -101,10 +101,3 @@ TEST_F(DatabaseTablesTest, InsertBooks) {
   EXPECT_TRUE(r.empty());
   ASSERT_TRUE(is_status_ok(st));
 }
-
-/* add tests async operations */
-
-int main(int argc, char **argv) {
-  ::testing::InitGoogleTest(&argc, argv);
-  return RUN_ALL_TESTS();
-}

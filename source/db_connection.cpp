@@ -44,6 +44,22 @@ DBConnection::DBConnection(const IDBTables *tables,
         "указатедем на функционал таблиц");
 }
 
+DBConnection::DBConnection(const DBConnection &r)
+  : parameters_(r.parameters_), tables_(r.tables_) {}
+
+DBConnection &DBConnection::operator=(const DBConnection &r) {
+  if (&r != this) {
+    // копируем
+    parameters_ = db_parameters(r.parameters_);
+    tables_ = r.tables_;
+    // установить дефолтные значения
+    error_.Reset();
+    status_ = STATUS_DEFAULT;
+    is_connected_ = false;
+  }
+  return *this;
+}
+
 DBConnection::~DBConnection() {}
 
 mstatus_t DBConnection::GetStatus() const {

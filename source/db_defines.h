@@ -59,13 +59,27 @@
 
 
 namespace asp_db {
-/** \brief Идентификатор таблиц */
+/**
+ * \brief Макро на открытие приватных методов класса
+ *   для другого класса.
+ * \note Имплементация сильной связности
+ *   классов "Включаемый"-"Включающий"
+ */
+#define OWNER(x) friend class x
+
+/**
+ * \brief Идентификатор таблиц
+ * */
 typedef uint32_t db_table;
 
-/** \brief Уникальный идентификатор поля БД */
+/**
+ * \brief Уникальный идентификатор поля БД
+ * */
 typedef uint32_t db_variable_id;
 
-/** \brief клиент БД */
+/**
+ * \brief клиент БД
+ * */
 enum class db_client: uint32_t {
   NOONE = 0,
   /// реализация в db_connection_postgre.cpp

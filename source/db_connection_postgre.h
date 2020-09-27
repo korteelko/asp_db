@@ -26,9 +26,14 @@
 namespace asp_db {
 // смотри страницу:
 // https://www.tutorialspoint.com/postgresql/postgresql_c_cpp.htm
-/** \brief Реализация DBConnection для postgresql */
+/**
+ * \brief Реализация DBConnection для postgresql
+ * */
 class DBConnectionPostgre final: public DBConnection {
-  /** \brief Данные полей таблицы, которые можно из неё вытащить */
+  ADD_TEST_CLASS(DBConnectionPostgreProxy)
+  /**
+   * \brief Данные полей таблицы, которые можно из неё вытащить
+   * */
   struct db_field_info {
   public:
     /** \brief Имя поля */
@@ -42,7 +47,10 @@ class DBConnectionPostgre final: public DBConnection {
 
 public:
   DBConnectionPostgre(const IDBTables *tables, const db_parameters &parameters);
+
   ~DBConnectionPostgre() override;
+
+  std::shared_ptr<DBConnection> CloneConnection() override;
 
   mstatus_t AddSavePoint(const db_save_point &sp) override;
   void RollbackToSavePoint(const db_save_point &sp) override;
@@ -77,11 +85,10 @@ public:
     *   к формату 'hh:mm' */
   static std::string PostgreTimeToTime(const std::string &ptime);
 
-#ifdef DATABASE_TEST
-public:
-#else
 private:
-#endif
+  DBConnectionPostgre(const DBConnectionPostgre &r);
+  DBConnectionPostgre &operator=(const DBConnectionPostgre &r);
+
   /** \brief Добавить бэкап точку перед операцией изменяющей
     *   состояние таблицы */
   mstatus_t addSavePoint();
@@ -226,15 +233,15 @@ private:
       const std::string &value);
 
 private:
+  /**
+   * \brief Аноннимная обёртка над параметрами работы с Postgre:
+   *   поключения, транзакции
+   * */
   struct {
   public:
-    /** \brief Указатель на объект подключения */
-    std::unique_ptr<pqxx::connection> pconnect_;
-    /** \brief Указатель на транзакцию */
-    std::unique_ptr<pqxx::nontransaction> work_;
-
-  public:
-    /** \brief Инициализировать параметры соединения, транзакции */
+    /**
+     * \brief Инициализировать параметры соединения, транзакции
+     * */
     bool InitConnection(const std::string &connect_str) {
       pconnect_ = std::unique_ptr<pqxx::connection>(
           new pqxx::connection(connect_str));
@@ -244,14 +251,36 @@ private:
               new pqxx::nontransaction(*pconnect_));
       return IsAvailable();
     }
-    /** \brief Проверить установки текущей транзаккции */
+    /**
+     * \brief Освободить параметры подключения
+     * */
+    void ReleaseConnection() {
+      work_ = nullptr;
+      pconnect_ = nullptr;
+    }
+    /**
+     * \brief Проверить установки текущей транзаккции
+     * */
     bool IsAvailable() const {
       return work_ != nullptr;
     }
-    /** \brief Указатель на транзакцию */
+    /**
+     * \brief Указатель на транзакцию
+     * */
     pqxx::nontransaction *GetTransaction() const {
       return work_.get();
     }
+
+  public:
+    /**
+     * \brief Указатель на объект подключения
+     * */
+    std::unique_ptr<pqxx::connection> pconnect_ = nullptr;
+    /**
+     * \brief Указатель на транзакцию
+     * */
+    std::unique_ptr<pqxx::nontransaction> work_ = nullptr;
+
   } pqxx_work;
   // add result data for select queries for example, or IsTableExist
 };

@@ -26,8 +26,6 @@
 
 
 namespace asp_db {
-#define OWNER(x) friend class x
-
 class IDBTables;
 /** \brief Сетап для добавления точки сохранения */
 struct db_save_point {

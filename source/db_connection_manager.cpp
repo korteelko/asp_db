@@ -50,6 +50,10 @@ mstatus_t Transaction::ExecuteQueries() {
   return status_;
 }
 
+DBConnection *Transaction::GetConnection() const {
+  return connection_;
+}
+
 /* DBException */
 DBException::DBException(merror_t error, const std::string &msg)
   : error_(error, msg) {}
@@ -79,12 +83,21 @@ mstatus_t DBConnectionManager::CheckConnection() {
       initDBConnection();
   }
   if (db_connection_ && is_status_aval(status_)) {
-    Transaction tr(db_connection_.get());
-    tr.AddQuery(QuerySmartPtr(
-        new DBQuerySetupConnection(db_connection_.get())));
-    tr.AddQuery(QuerySmartPtr(
-        new DBQueryCloseConnection(db_connection_.get())));
-    status_ = tryExecuteTransaction(tr);
+    auto connection = DBConnectionCreator().cloneConnection(db_connection_.get());
+    if (connection.get()) {
+      Transaction tr(connection.get());
+      tr.AddQuery(QuerySmartPtr(new DBQuerySetupConnection(connection.get())));
+      tr.AddQuery(QuerySmartPtr(new DBQueryCloseConnection(connection.get())));
+      if (is_status_aval(status_ = tryExecuteTransaction(tr)))
+        error_.Reset();
+      if (connection->IsOpen())
+        connection->CloseConnection();
+      if (connection->GetErrorCode())
+        connection->LogError();
+    } else {
+      error_.SetError(ERROR_DB_CONNECTION, "Ошибка копирования подключения");
+      status_ = STATUS_HAVE_ERROR;
+    }
   } else {
     error_.SetError(ERROR_DB_CONNECTION, "Не удалось установить"
         " соединение для БД: " + parameters_.GetInfo());
@@ -182,7 +195,7 @@ void DBConnectionManager::initDBConnection() {
   status_ = STATUS_OK;
   try {
     db_connection_ = std::unique_ptr<DBConnection>(
-        DBConnectionCreator().InitDBConnection(tables_, parameters_));
+        DBConnectionCreator().initDBConnection(tables_, parameters_));
   } catch (DBException &e) {
     e.LogException();
     // если даже объект подключения был создан - затереть его
@@ -198,11 +211,11 @@ void DBConnectionManager::initDBConnection() {
 void DBConnectionManager::isTableExist(Transaction *tr,
     db_table dt, bool *is_exists) {
   tr->AddQuery(QuerySmartPtr(new DBQueryIsTableExists(
-      db_connection_.get(), dt, *is_exists)));
+      tr->GetConnection(), dt, *is_exists)));
 }
 
 void DBConnectionManager::createTable(Transaction *tr, db_table dt, void *) {
-  tr->AddQuery(QuerySmartPtr(new DBQueryCreateTable(db_connection_.get(),
+  tr->AddQuery(QuerySmartPtr(new DBQueryCreateTable(tr->GetConnection(),
       tables_->CreateSetupByCode(dt))));
 }
 
@@ -214,19 +227,19 @@ void DBConnectionManager::getTableFormat(Transaction *tr, db_table dt,
 void DBConnectionManager::saveRows(Transaction *tr,
     const db_query_insert_setup &qi, id_container *id_vec) {
   tr->AddQuery(QuerySmartPtr(
-      new DBQueryInsertRows(db_connection_.get(), qi, id_vec)));
+      new DBQueryInsertRows(tr->GetConnection(), qi, id_vec)));
 }
 
 void DBConnectionManager::selectRows(Transaction *tr,
     const db_query_select_setup &qs, db_query_select_result *result) {
   tr->AddQuery(QuerySmartPtr(
-      new DBQuerySelectRows(db_connection_.get(), qs, result)));
+      new DBQuerySelectRows(tr->GetConnection(), qs, result)));
 }
 
 void DBConnectionManager::deleteRows(Transaction *tr,
      const db_query_delete_setup &qd, void *) {
   tr->AddQuery(QuerySmartPtr(
-      new DBQueryDeleteRows(db_connection_.get(), qd)));
+      new DBQueryDeleteRows(tr->GetConnection(), qd)));
 }
 
 mstatus_t DBConnectionManager::tryExecuteTransaction(Transaction &tr) {
@@ -244,32 +257,22 @@ mstatus_t DBConnectionManager::tryExecuteTransaction(Transaction &tr) {
     error_.LogIt();
     trans_st = STATUS_HAVE_ERROR;
   }
-  if (db_connection_) {
-    if (db_connection_->IsOpen())
-      db_connection_->CloseConnection();
-    if (db_connection_->GetErrorCode())
-      db_connection_->LogError();
-  } else {
-    if (!error_.GetErrorCode())
-      error_.SetError(ERROR_DB_CONNECTION,
-          "Подключение к базе данных не инициализировано");
-    status_ = trans_st = STATUS_HAVE_ERROR;
-  }
   return trans_st;
 }
 
 /* DBConnection::DBConnectionInstance */
 DBConnectionManager::DBConnectionCreator::DBConnectionCreator() {}
 
-DBConnection *DBConnectionManager::DBConnectionCreator::InitDBConnection(
+std::unique_ptr<DBConnection>
+DBConnectionManager::DBConnectionCreator::initDBConnection(
     const IDBTables *tables, const db_parameters &parameters) {
-  DBConnection *connect = nullptr;
+  std::unique_ptr<DBConnection> connect = nullptr;
   switch (parameters.supplier) {
     case db_client::NOONE:
       break;
   #if defined(WITH_POSTGRESQL)
     case db_client::POSTGRESQL:
-      connect = new DBConnectionPostgre(tables, parameters);
+      connect = std::make_unique<DBConnectionPostgre>(tables, parameters);
       break;
   #endif  // WITH_POSTGRESQL
     // TODO: можно тут ошибку установить
@@ -277,5 +280,16 @@ DBConnection *DBConnectionManager::DBConnectionCreator::InitDBConnection(
       break;
   }
   return connect;
+}
+
+std::shared_ptr<DBConnection>
+DBConnectionManager::DBConnectionCreator::cloneConnection(DBConnection *orig) {
+  try {
+    return (orig) ? orig->CloneConnection() : nullptr;
+  } catch (std::exception &e) {
+    Logging::Append(io_loglvl::err_logs, "Ошибка копирования соединения бд:\n"
+        + std::string(e.what()));
+  }
+  return nullptr;
 }
 }  // namespace asp_db

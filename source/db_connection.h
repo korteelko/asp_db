@@ -38,12 +38,10 @@ namespace asp_db {
  * \brief Структура параметров подключения
  * */
 struct db_parameters {
+  db_parameters(const db_parameters &) = default;
+  db_parameters &operator=(const db_parameters &) = default;
+
 public:
-  /**
-   * \brief Флаг блокирования физического подключения к базе данных, просто
-   * выводить получившееся запросы в stdout(или логировать)
-   * */
-  bool is_dry_run;
   /**
    * \brief Тип клиента
    * */
@@ -66,6 +64,11 @@ public:
    * */
               host;
   int port;
+  /**
+   * \brief Флаг блокирования физического подключения к базе данных, просто
+   * выводить получившееся запросы в stdout(или логировать)
+   * */
+  bool is_dry_run;
 
 public:
   db_parameters();
@@ -84,8 +87,15 @@ public:
  * */
 class DBConnection {
   ADD_TEST_CLASS(DBConnectionProxy)
+
 public:
+  DBConnection(const DBConnection &r);
+  DBConnection &operator=(const DBConnection &r);
   virtual ~DBConnection();
+  /**
+   * \brief Создать копию текущего соединения
+   * */
+  virtual std::shared_ptr<DBConnection> CloneConnection() = 0;
 
   /**
    * \brief Добавить метку сохранения
@@ -226,7 +236,7 @@ protected:
   /**
    * \brief Статус подключения
    * */
-  mstatus_t status_;
+  mstatus_t status_ = STATUS_DEFAULT;
   /**
    * \brief Параметры подключения к базе данных
    * */
@@ -238,7 +248,7 @@ protected:
   /**
    * \brief Флаг подключения к бд
    * */
-  bool is_connected_;
+  bool is_connected_ = false;
 };
 }  // namespace asp_db
 
