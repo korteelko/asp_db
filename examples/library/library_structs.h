@@ -105,4 +105,9 @@ struct author {
   int32_t initialized = 0;
 };
 
+template <class T>
+std::string insertValue2str(const T &s) {
+  return std::to_string(s);
+}
+
 #endif  // !EXAMPLES__LIBRARY_STRUCTS_H

@@ -23,11 +23,12 @@ script:
   - mkdir -p build
   - cd build
   - |
-    cmake .. \
+    cmake \
       ${CMAKE_OPTIONS} \
       -DCMAKE_BUILD_TYPE=${BUILD_TYPE} \
-      -DTESTS_ENABLED=${TESTS_ENABLED}
-      -DBUILD_EXAMPLES=${BUILD_EXAMPLES}
+      -DTESTS_ENABLED=${TESTS_ENABLED} \
+      -DBUILD_EXAMPLES=${BUILD_EXAMPLES} \
+      ..
   - make
 
 
