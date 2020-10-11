@@ -29,7 +29,6 @@ std::string db_client_to_string(db_client client) {
       break;
     default:
       throw DBException("Неизвестный клиент БД");
-      name = "undefined";
   }
   return name;
 }
@@ -59,55 +58,12 @@ merror_t db_variable::CheckYourself() const {
   return ew;
 }
 
-std::string db_variable::TranslateFromVector(
-    const std::vector<std::string> &vec) {
-  std::string result = "";
-  for (const auto &x: vec)
-    result += std::to_string(x.size()) + " " + x ;
-  return result;
-}
-
-mstatus_t db_variable::TranslateToVector(const std::string &str,
-    std::vector<std::string> *vec_p) {
-  vec_p->clear();
-  const char *ptr = str.c_str();
-  size_t pos = 0;
-  size_t start = 0;
-  mstatus_t st = STATUS_OK;
-  while (start < str.size()) {
-    int n = std::atoi(ptr + start);
-    pos = str.find(' ', start);
-    if (pos != std::string::npos) {
-      if (n > 0) {
-        if (pos + n < str.size()) {
-          vec_p->push_back(str.substr(pos + 1, n));
-          pos = pos + n;
-        } else {
-          st = STATUS_HAVE_ERROR;
-          break;
-        }
-      } else {
-        vec_p->push_back("");
-      }
-    } else {
-      break;
-    }
-    start = pos + 1;
-  }
-  if (vec_p->size())
-    // ошибки не было, но распарсено неудачно
-    if (is_status_ok(st) != true)
-      st = STATUS_NOT;
-  return st;
-}
-
 bool db_variable::operator==(const db_variable &r) const {
   bool same = strcmp(r.fname, fname) == 0;
   same &= r.type == type;
   same &= r.len == len;
   if (same) {
     // flags
-    same = r.flags.is_unique == flags.is_unique;
     same &= r.flags.can_be_null == flags.can_be_null;
   }
   return same;

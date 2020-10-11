@@ -803,7 +803,8 @@ void DBConnectionPostgre::addVariableToString(std::string *str_p,
   if (var.flags.is_array && t != db_type::type_char_array) {
     std::string str = "ARRAY[";
     std::vector<std::string> vec;
-    if (is_status_ok(db_variable::TranslateToVector(value, &vec))) {
+    if (is_status_ok(db_variable::TranslateToVector(
+        value, db_variable::AppendOp(vec)))) {
       for (const auto &x: vec)
         str += getVariableValue(var, x);
       size_t lp = str.rfind(',');

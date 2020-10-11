@@ -16,6 +16,7 @@
 
 #include "ErrorWrap.h"
 
+#include <deque>
 #include <string>
 #include <vector>
 
@@ -57,7 +58,6 @@
 #define ERROR_DB_SAVE_POINT   (0x0A00 | ERROR_DATABASE_T)
 #define ERROR_DB_SAVE_POINT_MSG   "database save point error "
 
-
 namespace asp_db {
 /**
  * \brief Макро на открытие приватных методов класса
@@ -78,7 +78,7 @@ typedef uint32_t db_table;
 typedef uint32_t db_variable_id;
 
 /**
- * \brief клиент БД
+ * \brief Клиент БД
  * */
 enum class db_client: uint32_t {
   NOONE = 0,
@@ -141,18 +141,8 @@ public:
     bool is_primary_key = false;
     /** \brief Значение является ссылкой на столбец другой таблицы */
     bool is_reference = false;
-    /** \brief Значение должно быть уникальным */
-    bool is_unique = false;
-    /** \brief Значение может быть инициализировано */
+    /** \brief Значение может быть не инициализировано */
     bool can_be_null = true;
-    /** \brief Значение параметра входит в массив данных, которые
-      *   учитываются(МАССИВ должен быть уникальным) при попытке
-      *   включения нового элемента в таблицу
-      * \note Переменная введена для конфигурации SELECT подобных запросов
-      *   Example: [1,2,3] == [1,2,3]; [1,2,3] != [1,2,4]; [1,2,3] != [1,3,2]
-      * \todo unique набор может быть не один, убрать эту галку,
-      *   переделать создание таблицы */
-    // bool in_unique_constrain = false;
     /** \brief Число может быть отрицательным
       * \note only for numeric types */
     bool can_be_negative = false;
@@ -183,17 +173,94 @@ public:
   bool operator==(const db_variable &r) const;
   bool operator!=(const db_variable &r) const;
 
-  /** \brief Проверить несовместимы ли флаги и другие параметры */
+  /**
+   * \brief Проверить несовместимы ли флаги и другие параметры
+   * */
   merror_t CheckYourself() const;
 
-  /** \brief Сформировать из вектора строк одну строку.
-    *   Так упаковывается массив параметров */
-  static std::string TranslateFromVector(const std::vector<std::string> &vec);
+  /* TODO: section to split
+   * start */
+  /**
+   * \brief Шаблонный класс на прокидывание аргумента
+   * \todo Переместить в файл обобщённых параметров
+   * */
+  template <class T = void>
+  struct pass {
+    T operator()(const T &t) const { return t; }
+  };
 
-  /** \brief Разбить строку в вектор.
-    *   Так мы распаковываем вектор */
-  static mstatus_t TranslateToVector(const std::string &str,
-      std::vector<std::string> *vec_p);
+  /**
+   * \brief Сформировать из вектора строк одну строку.
+   * \param to_str Унарная функция(функтор) преобразования
+   *   значения итератора к строке
+   * \note Так упаковывается массив параметров
+   * */
+  template<class CIteratorT, class U = pass<std::string>>
+  static std::string TranslateFromVector(
+      const CIteratorT &begin, const CIteratorT &end,
+      U to_str = U()) {
+    std::string result = "";
+    for (auto it = begin; it != end; ++it) {
+      auto str = to_str(*it);
+      result += std::to_string(str.size()) + " " + str;
+    }
+    return result;
+  }
+
+  static void append(std::vector<std::string> &src, const std::string &s) {
+    src.push_back(s);
+  }
+
+  static void append(std::deque<std::string> &src, const std::string &s) {
+    src.push_back(s);
+  }
+
+  template<class T = std::vector<std::string>,
+           class U = pass<std::string>>
+  struct AppendOp {
+    T &src;
+    U to_str;
+    AppendOp(T &_src, U _to_str = U())
+      : src(_src), to_str(_to_str) {}
+    void operator()(const std::string &s) {
+      append(src, to_str(s));
+    }
+  };
+  /* section to split end */
+
+  /**
+   * \brief Разбить строку в вектор.
+   * \note Так мы распаковываем вектор
+   * */
+  template<class A = AppendOp<std::vector<std::string>>>
+  static mstatus_t TranslateToVector(const std::string &str, A op) {
+    const char *ptr = str.c_str();
+    size_t pos = 0;
+    size_t start = 0;
+    mstatus_t st = STATUS_OK;
+    while (start < str.size()) {
+      int n = std::atoi(ptr + start);
+      pos = str.find(' ', start);
+      if (pos != std::string::npos) {
+        if (n > 0) {
+          if (pos + n < str.size()) {
+            op(str.substr(pos + 1, n));
+            pos = pos + n;
+          } else {
+            st = STATUS_HAVE_ERROR;
+            break;
+          }
+        } else {
+          // ????? how does it work with type `U` != `pass`
+          op("");
+        }
+      } else {
+        break;
+      }
+      start = pos + 1;
+    }
+    return st;
+  }
   /**
    * \brief Перегрузка функции прокидывания строкового значения для
    *   поддержания интерфейса преобразования значений полей таблицы
@@ -201,6 +268,14 @@ public:
    * */
   static inline std::string field2str(const std::string &str) {
     return str;
+  }
+  /**
+   * \brief Перегрузка функции приведения данных контейнера к строковому
+   *   представлению
+   * */
+  template<class ContT>
+  static inline std::string field2str(const ContT &c) {
+    return TranslateFromVector(c.begin(), c.end());
   }
   /**
    * \brief Перегрузка функции приведения значения числового
@@ -239,24 +314,41 @@ enum class db_reference_act {
 // static_assert (0, "добавить нереализованные действия");
 
 
-/** \brief структура содержащая параметры удалённого ключа */
+/**
+ * \brief Структура содержащая параметры удалённого ключа
+ * */
 struct db_reference {
 public:
-  /** \brief собственное имя параметра таблицы */
+  /**
+   * \brief Собственное имя параметра таблицы
+   * */
   std::string fname;
-  /** \brief таблица на которую ссылается параметр */
+  /**
+   * \brief Таблица на которую ссылается параметр
+   * \todo Заменить на обычную строку
+   * */
   db_table foreign_table;
-  /** \brief имя параметра в таблице foreign_table */
+  /**
+   * \brief имя параметра в таблице foreign_table
+   * */
   std::string foreign_fname;
 
-  /** \brief флаг 'внешнего ключа' */
+  /**
+   * \brief флаг 'внешнего ключа'
+   * */
   bool is_foreign_key = false;
-  /** \brief флаг наличия on_delete метода */
+  /**
+   * \brief флаг наличия on_delete метода
+   * */
   bool has_on_delete = false;
-  /** \brief флаг наличия on_update метода */
+  /**
+   * \brief флаг наличия on_update метода
+   * */
   bool has_on_update = false;
-  /** \brief метод удаления значения
-    * \default db_on_delete::empty */
+  /**
+   * \brief метод удаления значения
+   * \default db_on_delete::empty
+   * */
   db_reference_act delete_method;
   db_reference_act update_method;
 

@@ -89,7 +89,8 @@ protected:
  * */
 class DBQueryAddSavePoint: public DBQuery {
 public:
-  DBQueryAddSavePoint(DBConnection *ptr, const db_save_point &sp);
+  DBQueryAddSavePoint(DBConnection *ptr,
+      const db_save_point &sp);
   /** \brief Rollback к этой точке сохранения */
   void unExecute() override;
 
@@ -106,7 +107,8 @@ private:
  * */
 class DBQueryIsTableExists: public DBQuery {
 public:
-  DBQueryIsTableExists(DBConnection *db_ptr, db_table dt, bool &is_exists);
+  DBQueryIsTableExists(DBConnection *db_ptr,
+      db_table dt, bool &is_exists);
 
 protected:
   mstatus_t exec() override;
@@ -156,7 +158,8 @@ private:
 class DBQueryInsertRows: public DBQuery {
 public:
   DBQueryInsertRows(DBConnection *db_ptr,
-      const db_query_insert_setup &insert_setup, id_container *id_vec);
+      const db_query_insert_setup &insert_setup,
+      id_container *id_vec);
 
 protected:
   mstatus_t exec() override;
