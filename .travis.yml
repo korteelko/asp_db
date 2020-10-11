@@ -1,0 +1,35 @@
+language: cpp
+
+dist: focal
+
+matrix:
+  include:
+  - env: BUILD_TYPE=Debug TESTS_ENABLED=ON BUILD_EXAMPLES=ON
+    os: linux
+    compiler: gcc
+
+addons:
+  apt:
+    packages:
+      - gcc-10
+      - cmake
+      - lcov
+      - libpqxx-dev
+      - googletest
+    sources:
+      - ubuntu-toolchain-r-test
+
+script:
+  - mkdir -p build
+  - cd build
+  - |
+    cmake .. \
+      ${CMAKE_OPTIONS} \
+      -DCMAKE_BUILD_TYPE=${BUILD_TYPE} \
+      -DTESTS_ENABLED=${TESTS_ENABLED}
+      -DBUILD_EXAMPLES=${BUILD_EXAMPLES}
+  - make
+
+
+notifications:
+  email: false
