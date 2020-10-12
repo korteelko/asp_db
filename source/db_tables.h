@@ -158,10 +158,16 @@ public:
    * \todo Переориентировать на работу не со структурой таблицы,
    *   а с сетапом, похожим на сетап создания и т.п.
    *   Например, через db_condition_node
+   *
+   * \note 2020.10.12 update
+   *   Интерфейс остался, но логика подправилась - теперь такое
+   *   неказистое деревцо запроса добавления и привязано к
+   *   insert операции
    * */
   template <class TableI>
   std::unique_ptr<db_where_tree> InitWhereTree(const TableI &where) const {
-    return db_where_tree::init(InitInsertSetup<TableI>({where}).get());
+    auto is = InitInsertSetup<TableI>({where});
+    return (is.get() != nullptr) ? is->InitWhereTree() : nullptr;
   }
 
 protected:

@@ -16,6 +16,7 @@
 
 #include "Common.h"
 #include "db_defines.h"
+#include "db_expression.h"
 #include "ErrorWrap.h"
 
 #include <algorithm>
@@ -27,110 +28,34 @@
 
 namespace asp_db {
 class IDBTables;
-/** \brief Сетап для добавления точки сохранения */
+/**
+ * \brief Сетап для добавления точки сохранения
+ * */
 struct db_save_point {
 public:
-  /** \brief Формат имени точки сохранения:
-    *  [a-z,A-Z,_]{1}[a-z,A-Z,1-9,_]{*} */
+  /**
+   * \brief Формат имени точки сохранения:
+   *  [a-z,A-Z,_]{1}[a-z,A-Z,1-9,_]{*}
+   * */
   db_save_point(const std::string &_name);
-
-  /** \brief Получить собранную строку для добавления точки сохранения */
+  /**
+   * \brief Получить собранную строку для добавления точки сохранения
+   * */
   std::string GetString() const;
 
 public:
-  /** \brief Собственное уникальное имя ноды */
+  /**
+   * \brief Собственное уникальное имя ноды
+   * */
   std::string name;
 };
 
-/** \brief Сетап удаления таблицы */
+/**
+ * \brief Сетап удаления таблицы
+ * */
 struct db_table_drop_setup {
   db_table table;
   db_reference_act act;
-};
-
-/** \brief Структура описывающая дерево логических отношений
-  * \note В общем, во внутренних узлах хранится операция, в конечных
-  *   операнды, соответственно строка выражения собирается обходом
-  *   в глубь
-  * Прописывал ориантируюсь на СУБД Postgre потому что
-  *   более/менее похожа стандарт */
-struct db_condition_node {
-  /** \brief Дерево условия для where_tree */
-  OWNER(db_where_tree);
-  /** \brief Операторы отношений условий
-    * \note чё там унарые то операторы то подвезли? */
-  enum class db_operator_t {
-    /** \brief пустой оператор */
-    op_empty = 0,
-    /** \brief IS */
-    op_is,
-    /** \brief IS NOT */
-    op_not,
-    /** \brief оператор поиска в листе */
-    op_in,
-    /** \brief оператор поиска в коллекции */
-    op_like,
-    /** \brief выборка по границам */
-    op_between,
-    /** \brief логическое 'И' */
-    op_and,
-    /** \brief логическое 'ИЛИ' */
-    op_or,
-    /** \brief == равно */
-    op_eq,
-    /** \brief != не равно */
-    op_ne,
-    /** \brief >= больше или равно */
-    op_ge,
-    /** \brief > больше */
-    op_gt,
-    /** \brief <= меньше или равно*/
-    op_le,
-    /** \brief < меньше */
-    op_lt,
-  };
-
-  typedef std::function<std::string(db_type, const std::string &,
-      const std::string &)> DataToStrF;
-
-  /** \brief Конвертировать данные узла в строку */
-  static std::string DataToStr(db_type, const std::string &f,
-      const std::string &v);
-
-public:
-  ~db_condition_node();
-  /** \brief Получить строковое представление дерева
-    * \note Предварительный сетап данных для операций с СУБД */
-  std::string GetString(DataToStrF dts = DataToStr) const;
-  /** \brief Есть ли подузлы */
-  bool IsOperator() const { return !is_leafnode; }
-
-  db_condition_node(db_operator_t db_operator);
-  db_condition_node(db_type t, const std::string &fname,
-      const std::string &data);
-
-protected:
-  db_condition_node *left = nullptr;
-  db_condition_node *rigth = nullptr;
-  /** \brief Структура данных узла */
-  struct {
-    /** \brief Тип данных в БД */
-    db_type type;
-    /** \brief Имя столбца */
-    std::string field_name;
-    /** \brief Строковое представление данных */
-    std::string field_value;
-  } data;
-  db_operator_t db_operator;
-  /** \brief Количество подузлов
-    * \note Для insert операций */
-  // size_t subnodes_count = 0;
-  /** \brief КОНЕЧНАЯ */
-  bool is_leafnode = false;
-  /** \brief избегаем циклических ссылок для сборок строк
-    * \note небольшой оверкилл наверное
-    * \todo чекнуть можно ли обойтись без неё */
-  mutable bool visited = false;
 };
 
 /* Data structs */
@@ -234,7 +159,6 @@ public:
   const db_fields_collection &fields;
 };
 
-
 /**
  * \brief Структура для сборки INSERT запросов
  * */
@@ -260,22 +184,36 @@ public:
   virtual ~db_query_insert_setup() = default;
 
   size_t RowsSize() const;
+  /**
+   * \brief Функция собирающая обычное дерево where условий
+   *   разнесённых операторами AND
+   * */
+  std::unique_ptr<db_where_tree> InitWhereTree();
 
 public:
-  /** \brief Набор значений для операций INSERT|SELECT|DELETE */
+  /**
+   * \brief Набор значений для операций INSERT|SELECT|DELETE
+   * */
   std::vector<row_values> values_vec;
 };
-/** \brief Контейнер для результатов операции INSERT, иначе говоря,
-  *   для полученных от СУБД идентификаторов рядов/строк */
+
+/**
+ * \brief Контейнер для результатов операции INSERT, иначе говоря,
+ *   для полученных от СУБД идентификаторов рядов/строк
+ * */
 struct id_container {
 public:
   mstatus_t status = STATUS_DEFAULT;
-  /** \brief Контенер идентификаторов строк вектора в БД */
+  /**
+   * \brief Контенер идентификаторов строк вектора в БД
+   * */
   std::vector<int> id_vec;
 };
 
 
-/** \brief структура для сборки SELECT(и DELETE) запросов */
+/**
+ * \brief структура для сборки SELECT(и DELETE) запросов
+ * */
 struct db_query_select_setup: public db_query_basesetup {
 public:
   static db_query_select_setup *Init(const IDBTables *tables, db_table _table);
@@ -283,18 +221,24 @@ public:
   virtual ~db_query_select_setup() = default;
 
 public:
-  /** \brief Сетап выражения where для SELECT/UPDATE/DELETE запросов */
+  /**
+   * \brief Сетап выражения where для SELECT/UPDATE/DELETE запросов
+   * */
   std::unique_ptr<class db_where_tree> where_condition;
 
 protected:
   db_query_select_setup(db_table _table,
       const db_fields_collection &_fields);
 };
-/** \brief псевдоним DELETE запросов */
+/**
+ * \brief псевдоним DELETE запросов
+ * */
 typedef db_query_select_setup db_query_delete_setup;
 
 
-/** \brief структура для сборки UPDATE запросов */
+/**
+ * \brief Структура для сборки UPDATE запросов
+ * */
 struct db_query_update_setup: public db_query_select_setup {
 public:
   static db_query_update_setup *Init(db_table _table);
@@ -309,7 +253,9 @@ protected:
 
 
 /* select result */
-/** \brief структура для сборки INSERT запросов */
+/**
+ * \brief Структура для сборки INSERT запросов
+ * */
 struct db_query_select_result: public db_query_basesetup {
 public:
   db_query_select_result() = delete;
@@ -317,66 +263,22 @@ public:
 
   virtual ~db_query_select_result() = default;
 
-  /** \brief Проверить соответствие строки strname и имени поля
-    * \note todo: Заменить строки на int идентификаторы */
+  /**
+   * \brief Проверить соответствие строки strname и имени поля
+   * \note todo: Заменить строки на int идентификаторы
+   * */
   bool isFieldName(const std::string &strname, const db_variable &var);
 
 public:
-  /** \brief Набор значений для операций INSERT/UPDATE */
+  /**
+   * \brief Набор значений для операций INSERT/UPDATE
+   * */
   std::vector<row_values> values_vec;
 };
 inline bool db_query_select_result::isFieldName(
     const std::string &strname, const db_variable &var) {
   return strname == var.fname;
 }
-
-
-/**
- * \brief Дерево where условий
- * \note В общем и целом:
- *   1) не очень оптимизировано
- *   2) строки которая хочет видеть СУБД могут отличаться от того что
- *     представлено в коде, поэтому оставим возможность их менять
- * \todo Переделать это всё
- * */
-class db_where_tree {
-public:
-  db_where_tree(const db_where_tree &) = delete;
-  db_where_tree(db_where_tree &&) = delete;
-
-  db_where_tree &operator=(const db_where_tree &) = delete;
-  db_where_tree &operator=(db_where_tree &&) = delete;
-
-  // db_condition_tree *GetTree() const {return root_;}
-  /** \brief Собрать строку условного выражения */
-  std::string GetString(db_condition_node::DataToStrF dts =
-       db_condition_node::DataToStr) const;
-  /** \brief Условно(не упорядочены), первая нода коллекции дерева */
-  std::vector<std::shared_ptr<db_condition_node>>::iterator TreeBegin();
-  /** \brief Условно(не упорядочены), конечная нода коллекции дерева */
-  std::vector<std::shared_ptr<db_condition_node>>::iterator TreeEnd();
-
-  /**
-   * \brief Функция собирающая обычное дерево where условий
-   *   разнесённых операторами AND
-   * \badcode Не понятно как собрать шикарное дерево с множеством
-   *   разнообразных условий
-   * */
-  static std::unique_ptr<db_where_tree> init(db_query_insert_setup *ins_ptr);
-
-protected:
-  db_where_tree();
-  /** \brief Собрать дерево условий по вектору узлов условий source_ */
-  void construct();
-
-protected:
-  /** \brief Контейнер-хранилище узлов условий */
-  std::vector<std::shared_ptr<db_condition_node>> source_;
-  /** \brief Корень дерева условий */
-  db_condition_node *root_ = nullptr;
-  /** \brief Результирующая строка собранная из дерева условий */
-  std::string data_;
-};
 }  // namespace asp_db
 
 #endif  // !_DATABASE__DB_QUERIES_SETUP_H_

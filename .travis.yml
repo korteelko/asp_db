@@ -1,8 +1,9 @@
 language: cpp
 
 dist: focal
+os: linux
 
-matrix:
+jobs:
   include:
   - env: BUILD_TYPE=Debug TESTS_ENABLED=ON BUILD_EXAMPLES=ON
     os: linux
@@ -15,7 +16,7 @@ addons:
       - cmake
       - lcov
       - libpqxx-dev
-      - googletest
+      - libgtest-dev
     sources:
       - ubuntu-toolchain-r-test
 
