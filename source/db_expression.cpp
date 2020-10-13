@@ -13,83 +13,13 @@
 
 
 namespace asp_db {
-/* db_condition_tree */
-db_condition_node::db_condition_node(db_operator_t db_operator)
-  : data({db_type::type_empty, "", ""}), db_operator(db_operator),
-    is_leafnode(false) {}
-
-db_condition_node::db_condition_node(db_type t, const std::string &fname,
-    const std::string &data)
-  : data({t, fname, data}), db_operator(db_operator_t::op_empty), is_leafnode(true) {}
-
-db_condition_node::~db_condition_node() {}
-
-std::string db_condition_node::DataToStr(db_type t, const std::string &f,
+template<>
+std::string DataToStr(db_type t, const std::string &f,
     const std::string &v) {
   return (t == db_type::type_char_array || t == db_type::type_text) ?
       f + " = '" + v + "'": f + " = " + v;
 }
 
-std::string db_condition_node::GetString(DataToStrF dts) const {
-  std::string l, r;
-  std::string result;
-  visited = true;
-  // если поддеревьев нет, собрать строку
-  if (db_operator == db_operator_t::op_empty)
-    return dts(data.type, data.field_name, data.field_value);
-    //return data.field_name + " = " + data.field_value;
-  if (left)
-    if (!left->visited)
-      l = left->GetString(dts);
-  if (rigth)
-    if (!rigth->visited)
-      r = rigth->GetString(dts);
-  switch (db_operator) {
-    case db_operator_t::op_is:
-      result = l +  " IS " + r;
-      break;
-    case db_operator_t::op_not:
-      result = l +  " IS NOT " + r;
-      break;
-    case db_operator_t::op_in:
-      result = l +  " IN " + r;
-      break;
-    case db_operator_t::op_like:
-      result = l +  " LIKE " + r;
-      break;
-    case db_operator_t::op_between:
-      result = l +  " BETWEEN " + r;
-      break;
-    case db_operator_t::op_and:
-      result = l +  " AND " + r;
-      break;
-    case db_operator_t::op_or:
-      result = l +  " OR " + r;
-      break;
-    case db_operator_t::op_eq:
-      result = l +  " = " + r;
-      break;
-    case db_operator_t::op_ne:
-      result = l +  " != " + r;
-      break;
-    case db_operator_t::op_ge:
-      result = l +  " >= " + r;
-      break;
-    case db_operator_t::op_gt:
-      result = l +  " > " + r;
-      break;
-    case db_operator_t::op_le:
-      result = l +  " <= " + r;
-      break;
-    case db_operator_t::op_lt:
-      result = l +  " < " + r;
-      break;
-    case db_operator_t::op_empty:
-      break;
-    // case db_operator_t::op_eq:
-  }
-  return result;
-}
 
 /* db_where_tree */
 db_where_tree::db_where_tree(std::shared_ptr<condition_source> source)
@@ -116,14 +46,6 @@ std::string db_where_tree::GetString(db_condition_node::DataToStrF dts) const {
     return root_->GetString(dts);
   }
   return "";
-}
-
-std::vector<std::shared_ptr<db_condition_node>>::iterator db_where_tree::TreeBegin() {
-  return source_->data.begin();
-}
-
-std::vector<std::shared_ptr<db_condition_node>>::iterator db_where_tree::TreeEnd() {
-  return source_->data.end();
 }
 
 void db_where_tree::construct() {

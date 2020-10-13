@@ -262,31 +262,31 @@ public:
     return st;
   }
   /**
-   * \brief Перегрузка функции прокидывания строкового значения для
-   *   поддержания интерфейса преобразования значений полей таблицы
-   *   к их строковым представлениям
-   * */
-  static inline std::string field2str(const std::string &str) {
-    return str;
-  }
-  /**
    * \brief Перегрузка функции приведения данных контейнера к строковому
    *   представлению
    * */
   template<class ContT>
-  static inline std::string field2str(const ContT &c) {
+  std::string field2str(const ContT &c) {
     return TranslateFromVector(c.begin(), c.end());
   }
-  /**
-   * \brief Перегрузка функции приведения значения числового
-   *   поля к строковому представлению
-   * */
-  template<class T, typename = typename std::enable_if<
-      std::is_arithmetic<T>::value, T>::type>
-  static std::string field2str(const T &t) {
-    return std::to_string(t);
-  }
 };
+/**
+ * \brief Перегрузка функции прокидывания строкового значения для
+ *   поддержания интерфейса преобразования значений полей таблицы
+ *   к их строковым представлениям
+ * */
+inline std::string field2str(const std::string &str) {
+  return str;
+}
+/**
+ * \brief Перегрузка функции приведения значения числового
+ *   поля к строковому представлению
+ * */
+template<class T, typename = typename std::enable_if<
+    std::is_arithmetic<T>::value, T>::type>
+static std::string field2str(const T &t) {
+  return std::to_string(t);
+}
 
 
 /** \brief структура содержащая параметры первичного ключа */
