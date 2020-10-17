@@ -159,7 +159,7 @@ std::unique_ptr<db_where_tree> db_query_insert_setup::InitWhereTree() {
     if (i != db_query_basesetup::field_index_end && i < fields.size()) {
       auto &f = fields[i];
       source->data.push_back(std::make_shared<db_condition_node>(
-          f.type, f.fname, x.second));
+          where_node_data(f.type, std::string(f.fname), x.second)));
     }
   }
   std::unique_ptr<db_where_tree> wt = std::make_unique<db_where_tree>(source);

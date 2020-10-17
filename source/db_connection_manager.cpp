@@ -86,6 +86,8 @@ mstatus_t DBConnectionManager::CheckConnection() {
       initDBConnection();
   }
   if (db_connection_ && is_status_aval(status_)) {
+    // TODO: вообще клонировать надо только postgres подключение
+    //   ввести флагец или что-либо похожее
     auto connection = DBConnectionCreator().cloneConnection(db_connection_.get());
     if (connection.get()) {
       Transaction tr(connection.get());

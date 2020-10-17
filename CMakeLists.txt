@@ -3,7 +3,7 @@ cmake_minimum_required(VERSION 3.9)
 set(PROJECT_NAME asp_db)
 project(${PROJECT_NAME})
 
-
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 add_compile_options(-Wall)
 
 set(CMAKE_BUILD_TYPE Debug)

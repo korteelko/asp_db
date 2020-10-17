@@ -4,6 +4,7 @@ lib/asp_db
 out/
 soft/
 
+.ccls-cache/
 .vs/
 .vscode/
 

@@ -7,15 +7,14 @@
  * This library is distributed under the MIT License.
  * See LICENSE file in the project root for full license information.
  */
-#include "db_connection_manager.h"
 #include "db_defines.h"
 #include "Logging.h"
+#include "db_connection_manager.h"
 
 #include <map>
 
 #include <assert.h>
 #include <string.h>
-
 
 namespace asp_db {
 std::string db_client_to_string(db_client client) {
@@ -34,31 +33,35 @@ std::string db_client_to_string(db_client client) {
 }
 
 /* db_variable */
-db_variable::db_variable(db_variable_id fid, const char *fname,
-    db_var_type type, db_variable_flags flags, int len)
-  : fid(fid), fname(fname), type(type), flags(flags), len(len) {}
+db_variable::db_variable(db_variable_id fid,
+                         const char* fname,
+                         db_var_type type,
+                         db_variable_flags flags,
+                         int len)
+    : fid(fid), fname(fname), type(type), flags(flags), len(len) {}
 
 merror_t db_variable::CheckYourself() const {
   merror_t ew = ERROR_SUCCESS_T;
   if (fname == NULL) {
     ew = ERROR_DB_VARIABLE;
-    Logging::Append(io_loglvl::err_logs, "пустое имя поля таблицы бд" +
-        STRING_DEBUG_INFO);
+    Logging::Append(io_loglvl::err_logs,
+                    "пустое имя поля таблицы бд" + STRING_DEBUG_INFO);
   } else if (type == db_var_type::type_char_array &&
-      (!flags.is_array || len < 1)) {
+             (!flags.is_array || len < 1)) {
     ew = ERROR_DB_VARIABLE;
     Logging::Append(io_loglvl::err_logs,
-        "установки поля char array не соответствуют ожиданиям" +
-        STRING_DEBUG_INFO);
+                    "установки поля char array не соответствуют ожиданиям" +
+                        STRING_DEBUG_INFO);
   } else if (flags.is_array && flags.is_reference) {
     ew = ERROR_DB_VARIABLE;
-    Logging::Append(io_loglvl::err_logs,
+    Logging::Append(
+        io_loglvl::err_logs,
         "недопустимая опция для массива - ссылка на внешнюю таблицу");
   }
   return ew;
 }
 
-bool db_variable::operator==(const db_variable &r) const {
+bool db_variable::operator==(const db_variable& r) const {
   bool same = strcmp(r.fname, fname) == 0;
   same &= r.type == type;
   same &= r.len == len;
@@ -69,17 +72,24 @@ bool db_variable::operator==(const db_variable &r) const {
   return same;
 }
 
-bool db_variable::operator!=(const db_variable &r) const {
+bool db_variable::operator!=(const db_variable& r) const {
   return !(*this == r);
 }
 
 /* db_reference */
-db_reference::db_reference(const std::string &fname, db_table ftable,
-    const std::string &f_fname, bool is_fkey, db_reference_act on_del,
-    db_reference_act on_upd)
-  : fname(fname), foreign_table(ftable), foreign_fname(f_fname),
-    is_foreign_key(is_fkey), has_on_delete(false), delete_method(on_del),
-    update_method(on_upd) {
+db_reference::db_reference(const std::string& fname,
+                           db_table ftable,
+                           const std::string& f_fname,
+                           bool is_fkey,
+                           db_reference_act on_del,
+                           db_reference_act on_upd)
+    : fname(fname),
+      foreign_table(ftable),
+      foreign_fname(f_fname),
+      is_foreign_key(is_fkey),
+      has_on_delete(false),
+      delete_method(on_del),
+      update_method(on_upd) {
   if (delete_method != db_reference_act::ref_act_not)
     has_on_delete = true;
   if (update_method != db_reference_act::ref_act_not)
@@ -93,22 +103,27 @@ merror_t db_reference::CheckYourself() const {
       // перестраховались
       if (has_on_delete && delete_method == db_reference_act::ref_act_not) {
         error = ERROR_DB_VARIABLE;
-        Logging::Append(io_loglvl::err_logs, "несоответсвие метода удаления "
-            "для ссылки. Поле: " + fname + ". Внешнее поле: " + foreign_fname);
+        Logging::Append(io_loglvl::err_logs,
+                        "несоответсвие метода удаления "
+                        "для ссылки. Поле: " +
+                            fname + ". Внешнее поле: " + foreign_fname);
       }
       if (has_on_update && update_method == db_reference_act::ref_act_not) {
         error = ERROR_DB_VARIABLE;
-        Logging::Append(io_loglvl::err_logs, "несоответсвие метода обновления "
-            "для ссылки. Поле: " + fname + ". Внешнее поле: " + foreign_fname);
+        Logging::Append(io_loglvl::err_logs,
+                        "несоответсвие метода обновления "
+                        "для ссылки. Поле: " +
+                            fname + ". Внешнее поле: " + foreign_fname);
       }
     } else {
       error = ERROR_DB_VARIABLE;
-      Logging::Append(io_loglvl::err_logs, "пустое имя поля для "
-          "внешней таблицы бд\n");
+      Logging::Append(io_loglvl::err_logs,
+                      "пустое имя поля для "
+                      "внешней таблицы бд\n");
     }
   } else {
     error = ERROR_DB_VARIABLE;
-      Logging::Append(io_loglvl::err_logs, "пустое имя поля таблицы бд\n");
+    Logging::Append(io_loglvl::err_logs, "пустое имя поля таблицы бд\n");
   }
   return error;
 }
@@ -129,7 +144,7 @@ std::string db_reference::GetReferenceActString(db_reference_act act) {
   }
 }
 
-bool db_reference::operator==(const db_reference &r) const {
+bool db_reference::operator==(const db_reference& r) const {
   bool same = fname == r.fname;
   same |= foreign_table == r.foreign_table;
   same |= foreign_fname == r.foreign_fname;
@@ -143,7 +158,7 @@ bool db_reference::operator==(const db_reference &r) const {
   return same;
 }
 
-bool db_reference::operator!=(const db_reference &r) const {
+bool db_reference::operator!=(const db_reference& r) const {
   return !(*this == r);
 }
 }  // namespace asp_db

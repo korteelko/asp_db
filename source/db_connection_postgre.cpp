@@ -9,6 +9,7 @@
  */
 #include "db_connection_postgre.h"
 
+#include "db_append_functor.h"
 #include "db_connection_manager.h"
 #include "db_queries_setup.h"
 #include "db_query.h"
@@ -71,16 +72,16 @@ struct where_string_set {
     : tr(tr) {}
 
   std::string operator()(db_type t, const std::string &f,
-      const std::string &v) {
+      const where_node_data &v) {
     if (t == db_type::type_date) {
-      return f + " = " + DBConnectionPostgre::DateToPostgreDate(v);
+      return f + " = " + DBConnectionPostgre::DateToPostgreDate(v.value);
     } else if (t == db_type::type_time) {
-      return f + " = " + DBConnectionPostgre::TimeToPostgreTime(v);
+      return f + " = " + DBConnectionPostgre::TimeToPostgreTime(v.value);
     }
     bool need_quote = (t == db_type::type_char_array || t == db_type::type_text);
     // для опции dry_run указатель не проинциализирован
     return (need_quote && tr) ?
-        f + " = " + tr->quote(v): f + " = " + v;
+        f + " = " + tr->quote(v.value): f + " = " + v.value;
   }
 public:
   /**
@@ -803,8 +804,10 @@ void DBConnectionPostgre::addVariableToString(std::string *str_p,
   if (var.flags.is_array && t != db_type::type_char_array) {
     std::string str = "ARRAY[";
     std::vector<std::string> vec;
+    container_t n(vec);
     if (is_status_ok(db_variable::TranslateToVector(
-        value, db_variable::AppendOp(vec)))) {
+        // value, AppendOp(n)))) {
+        value, AppendOp(n, append_push<std::string>)))) {
       for (const auto &x: vec)
         str += getVariableValue(var, x);
       size_t lp = str.rfind(',');

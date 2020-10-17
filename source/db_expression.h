@@ -14,121 +14,60 @@
 #define _DATABASE__DB_EXPRESSION_H_
 
 #include "Common.h"
-#include "db_defines.h"
 #include "ErrorWrap.h"
+#include "db_defines.h"
 
+#include <functional>
 #include <memory>
 
+#include <assert.h>
 
 namespace asp_db {
 /**
  * \brief Прототип шблона функции конвертации данных узла в строку по умолчанию.
  * */
-template<class T>
-std::string DataToStr(db_type t, const std::string &f, const T &v);
+template <class T>
+std::string DataToStr(db_type t, const std::string& f, const T& v);
 /**
  * \brief Функция конвертации данных узла в строку по умолчанию.
  *   Составит строку вида:
  *   `f + " = " + v`, для текстовых полей `v` в кавычки возьмёт
  * */
-template<>
-std::string DataToStr<std::string>(db_type t, const std::string &f,
-    const std::string &v);
+template <>
+std::string DataToStr<std::string>(db_type t,
+                                   const std::string& f,
+                                   const std::string& v);
+/**
+ * \brief Функция конвертации данных узла в строку для
+ *   типа поля таблицы
+ * */
+template <>
+std::string DataToStr<db_variable>(db_type t,
+                                   const std::string& f,
+                                   const db_variable& v);
 /**
  * \brief Функция конвертации данных численного узла в строку по умолчанию.
  * */
-template<class T, typename = typename std::enable_if<
-    std::is_arithmetic<T>::value, T>::type>
-std::string DataToStr(db_type t, const std::string &f, const T &v) {
+template <
+    class T,
+    typename = typename std::enable_if<std::is_arithmetic<T>::value, T>::type>
+std::string DataToStr(db_type t, const std::string& f, const T& v) {
   return DataToStr<std::string>(t, f, std::to_string(v));
 }
 
+struct where_node_data;
+template <>
+inline std::string DataToStr<where_node_data>(db_type t,
+                                              const std::string& f,
+                                              const where_node_data& v) {
+  return "";
+}
+
 /**
- * \brief Структура описывающая дерево логических отношений
- * \note В общем, во внутренних узлах хранится операция, в конечных
- *   операнды, соответственно строка выражения собирается обходом
- *   в глубь
- * Прописывал ориантируюсь на СУБД Postgre потому что
- *   более/менее похожа стандарт
+ * \brief Операторы отношений условий
+ * \note чё там унарые то операторы то подвезли?
  * */
-template <class T>
-struct condition_node {
-  /**
-   * \brief Дерево условия для where_tree
-   * */
-  OWNER(db_where_tree);
-  /**
-   * \brief Декларация функции приведения шаблонного типа к
-   *   строковому представлению для составления запросов
-   * */
-  typedef std::function<std::string(db_type,
-      const std::string &, const T &)> DataToStrF;
-  /**
-   * \brief Структура данных узла
-   * */
-  struct node_data {
-    /**
-     * \brief Тип данных в БД
-     * */
-    db_type type;
-    /**
-     * \brief Имя столбца
-     * */
-    std::string field_name;
-    /**
-     * \brief Строковое представление данных
-     * */
-    T field_data;
-  } data;
-  /**
-   * \brief Операторы отношений условий
-   * \note чё там унарые то операторы то подвезли?
-   * */
-  enum class db_operator_t;
-
-public:
-  condition_node(db_operator_t db_operator)
-    : data({.type = db_type::type_empty, .field_name = ""}),
-      db_operator(db_operator), is_leafnode(false) {}
-  condition_node(db_type t, const std::string &fname,
-      const T &data)
-    : data({.type = t, .field_name = fname, .field_data = data}),
-      db_operator(db_operator_t::op_empty), is_leafnode(true) {}
-
-  /**
-   * \brief Получить строковое представление дерева
-   * \note Предварительный сетап данных для операций с СУБД
-   * */
-  std::string GetString(DataToStrF dts = DataToStr<std::string>) const;
-  /**
-   * \brief Есть ли подузлы
-   * */
-  bool IsOperator() const {
-    return !is_leafnode;
-  }
-
-protected:
-  condition_node *left = nullptr;
-  condition_node *rigth = nullptr;
-  db_operator_t db_operator;
-  /**
-   * \brief КОНЕЧНАЯ
-   * */
-  bool is_leafnode = false;
-  /**
-   * \brief Избегаем циклических ссылок для сборок строк
-   * \note Небольшой оверкилл наверное
-   * \todo Чекнуть можно ли обойтись без неё(убрать ето)
-   * */
-  mutable bool visited = false;
-};
-/**
- * \brief Декларация типа узлов условия для использования в `where_tree`
- * */
-using db_condition_node = condition_node<std::string>;
-
-template <class T>
-enum class condition_node<T>::db_operator_t {
+enum class db_operator_t {
   /** \brief Пустой оператор */
   op_empty = 0,
   /** \brief IS */
@@ -158,41 +97,116 @@ enum class condition_node<T>::db_operator_t {
   /** \brief < меньше */
   op_lt,
 };
+/**
+ * \brief Перегрузка функции получения строкового представления
+ *   для типа операторов ДБ
+ * */
+std::string data2str(db_operator_t op);
+/**
+ * \brief Структура данных узла запросов 'where clause'
+ * */
+struct where_node_data {
+ public:
+  /// Оператор where выражения
+  db_operator_t op;
+  /// Строковое представление значения
+  std::string value;
+
+ public:
+  where_node_data(db_operator_t _op);
+  where_node_data(db_type, const std::string&, const std::string& _value);
+};
+/**
+ * \brief Структура описывающая дерево логических отношений
+ * */
+template <class T>
+struct expression_node {
+  /**
+   * \brief Дерево условия для where_tree
+   * */
+  OWNER(db_where_tree);
+  /**
+   * \brief Декларация функции приведения шаблонного типа к
+   *   строковому представлению для составления запросов
+   * */
+  typedef std::function<std::string(db_type, const std::string&, const T&)>
+      DataToStrF;
+  /**
+   * \brief Структура данных узла
+   * */
+  T field_data;
+
+  bool visited = false;
+
+ public:
+  expression_node(const T& data) : field_data(data) {}
+
+  /**
+   * \brief Получить строковое представление дерева
+   * \note Предварительный сетап данных для операций с СУБД
+   * */
+  std::string GetString(DataToStrF dts = DataToStr<T>) const;
+  /**
+   * \brief Обновить корень дерева
+   * \param op Операция БД, инициализирует новый корень дерева
+   * \param right Указатель на правый(или левый - тут без разницы)
+   *   узел дерева условий
+   *
+   * \return Новый указатель на корневой элемент дерева условий
+   * */
+  std::shared_ptr<expression_node> CreateNewRoot(
+      const T&,
+      const std::shared_ptr<expression_node>& right);
+
+ protected:
+  std::shared_ptr<expression_node> left = nullptr;
+  std::shared_ptr<expression_node> right = nullptr;
+};
+/**
+ * \brief Декларация типа узлов условия для использования в `where_tree`
+ * */
+using db_condition_node = expression_node<where_node_data>;
 
 template <class T>
-std::string condition_node<T>::GetString(DataToStrF dts) const {
+std::string expression_node<T>::GetString(DataToStrF dts) const {
   std::string l, r;
   std::string result;
-  visited = true;
+  assert(0);
   // если поддеревьев нет, собрать строку
-  if (db_operator == db_operator_t::op_empty)
-    return dts(data.type, data.field_name, data.field_data);
-  if (left)
-    if (!left->visited)
-      l = left->GetString(dts);
-  if (rigth)
-    if (!rigth->visited)
-      r = rigth->GetString(dts);
-  switch (db_operator) {
-    case db_operator_t::op_is:      result = l +  " IS " + r; break;
-    case db_operator_t::op_not:     result = l +  " IS NOT " + r; break;
-    case db_operator_t::op_in:      result = l +  " IN " + r; break;
-    case db_operator_t::op_like:    result = l +  " LIKE " + r; break;
-    case db_operator_t::op_between: result = l +  " BETWEEN " + r; break;
-    case db_operator_t::op_and:     result = l +  " AND " + r; break;
-    case db_operator_t::op_or:      result = l +  " OR " + r; break;
-    case db_operator_t::op_eq:      result = l +  " = " + r; break;
-    case db_operator_t::op_ne:      result = l +  " != " + r; break;
-    case db_operator_t::op_ge:      result = l +  " >= " + r; break;
-    case db_operator_t::op_gt:      result = l +  " > " + r; break;
-    case db_operator_t::op_le:      result = l +  " <= " + r; break;
-    case db_operator_t::op_lt:      result = l +  " < " + r; break;
-    case db_operator_t::op_empty:
-      break;
-  }
+  // if (db_operator == db_operator_t::op_empty)
+  //  return dts(data.type, data.field_name, data.field_data);
+  if (left.get())
+    l = left->GetString(dts);
+  if (right.get())
+    r = right->GetString(dts);
   return result;
 }
 
+/**
+ * \brief Класс инкапсулирующий функционал оператора WHERE
+ * */
+template <class T>
+class DBWhereClause {
+ public:
+  DBWhereClause();
+  DBWhereClause(std::shared_ptr<expression_node<T>> root);
+
+  /**
+   * \brief Собрать строку условного выражения
+   * */
+  std::string GetString(db_condition_node::DataToStrF dts = DataToStr<T>) const;
+  /**
+   * \brief Собрать строку `where` выражения по имеющимся данным
+   * */
+  std::string BuildClause();
+
+ protected:
+  mstatus_t status_ = STATUS_DEFAULT;
+  /**
+   * \brief Корень дерева условий
+   * */
+  std::shared_ptr<expression_node<T>> root;
+};
 
 /**
  * \brief Дерево where условий
@@ -203,7 +217,7 @@ std::string condition_node<T>::GetString(DataToStrF dts) const {
  * \todo Переделать это всё
  * */
 class db_where_tree {
-public:
+ public:
   /**
    * \brief Контейнер узлов
    * */
@@ -211,21 +225,22 @@ public:
     std::vector<std::shared_ptr<db_condition_node>> data;
   };
 
-public:
+ public:
   db_where_tree(std::shared_ptr<condition_source> source);
 
   // todo: мэйби открыть???
-  db_where_tree(const db_where_tree &) = delete;
-  db_where_tree(db_where_tree &&) = delete;
-  db_where_tree &operator=(const db_where_tree &) = delete;
-  db_where_tree &operator=(db_where_tree &&) = delete;
+  db_where_tree(const db_where_tree&) = delete;
+  db_where_tree(db_where_tree&&) = delete;
+  db_where_tree& operator=(const db_where_tree&) = delete;
+  db_where_tree& operator=(db_where_tree&&) = delete;
 
   /**
    * \brief Собрать строку условного выражения
    * */
-  std::string GetString(db_condition_node::DataToStrF dts = DataToStr<std::string>) const;
+  std::string GetString(
+      db_condition_node::DataToStrF dts = DataToStr<where_node_data>) const;
 
-protected:
+ protected:
   /**
    * \brief Собрать дерево условий по вектору узлов условий source_.data
    * \note Разбивает дерево как простое выражение с ОДНОРАНГОВЫМИ операциями,
@@ -235,7 +250,7 @@ protected:
    * */
   void construct();
 
-protected:
+ protected:
   mstatus_t status_ = STATUS_DEFAULT;
   /**
    * \brief Контейнер-хранилище узлов условий
@@ -244,7 +259,7 @@ protected:
   /**
    * \brief Корень дерева условий
    * */
-  db_condition_node *root_ = nullptr;
+  db_condition_node* root_ = nullptr;
   /**
    * \brief Результирующая строка собранная из дерева условий
    * */
