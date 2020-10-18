@@ -12,17 +12,15 @@
 
 #include <assert.h>
 
-
 using namespace asp_db;
 LibraryDBTables adb_;
 
 /**
  * \brief Тестинг работы с БД
  * */
-class DatabaseTablesTest: public ::testing::Test {
-protected:
-  DatabaseTablesTest()
-    : dbm_(&adb_) {
+class DatabaseTablesTest : public ::testing::Test {
+ protected:
+  DatabaseTablesTest() : dbm_(&adb_) {
     db_parameters db_par;
     db_par.is_dry_run = false;
     db_par.supplier = db_client::POSTGRESQL;
@@ -40,7 +38,7 @@ protected:
 
   ~DatabaseTablesTest() {}
 
-protected:
+ protected:
   /**
    * \brief Менеджер подключения к БД
    * */
@@ -49,9 +47,8 @@ protected:
 
 TEST_F(DatabaseTablesTest, TableExists) {
   ASSERT_TRUE(dbm_.GetErrorCode() == ERROR_SUCCESS_T);
-  std::vector<db_table> tables { table_book,
-      table_translation, table_author };
-  for (const auto &x: tables) {
+  std::vector<db_table> tables{table_book, table_translation, table_author};
+  for (const auto& x : tables) {
     if (!dbm_.IsTableExists(x)) {
       dbm_.CreateTable(x);
       ASSERT_TRUE(dbm_.IsTableExists(x));

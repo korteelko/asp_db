@@ -21,66 +21,66 @@
 #include <string>
 #include <vector>
 
-
 /* just example */
 
 using namespace asp_db;
 
 /* таблицы */
 /* tables */
-#define BOOK_TABLE        0x00010000
+#define BOOK_TABLE 0x00010000
 #define TRANSLATION_TABLE 0x00020000
-#define AUTHOR_TABLE      0x00030000
+#define AUTHOR_TABLE 0x00030000
 
 /* cols */
 /*   books */
 /*|   id   |   title   |   first publ. year   |   orig. lang.|*/
 /* UNIQUE(title, publ. year) */
-#define BOOK_ID           (BOOK_TABLE | 0x0001)
-#define BOOK_TITLE        (BOOK_TABLE | 0x0002)
-#define BOOK_PUB_YEAR     (BOOK_TABLE | 0x0003)
-#define BOOK_LANG         (BOOK_TABLE | 0x0004)
+#define BOOK_ID (BOOK_TABLE | 0x0001)
+#define BOOK_TITLE (BOOK_TABLE | 0x0002)
+#define BOOK_PUB_YEAR (BOOK_TABLE | 0x0003)
+#define BOOK_LANG (BOOK_TABLE | 0x0004)
 
 /*   translation */
-/*|   id   |   book id   |   target lang.   |   target lang. title   |   translators| */
+/*|   id   |   book id   |   target lang.   |   target lang. title   |
+ * translators| */
 /* UNIQUE(id, lang, target lang. title) */
 /* REFERENCE('book id' --> 'id' in table 'books') FOREIGN KEY */
-#define TRANS_ID          (TRANSLATION_TABLE | 0x0001)
-#define TRANS_BOOK_ID     (TRANSLATION_TABLE | 0x0002)
-#define TRANS_LANG        (TRANSLATION_TABLE | 0x0003)
+#define TRANS_ID (TRANSLATION_TABLE | 0x0001)
+#define TRANS_BOOK_ID (TRANSLATION_TABLE | 0x0002)
+#define TRANS_LANG (TRANSLATION_TABLE | 0x0003)
 #define TRANS_TRANS_TITLE (TRANSLATION_TABLE | 0x0004)
 #define TRANS_TRANSLATORS (TRANSLATION_TABLE | 0x0005)
 
 /*   author */
-/*|   id   |   name   |   born year(NULL)   |   died year(NULL)   |   books[](NULL)| */
+/*|   id   |   name   |   born year(NULL)   |   died year(NULL)   |
+ * books[](NULL)| */
 /* UNIQUE(name, born year, died year) */
-#define AUTHOR_ID         (AUTHOR_TABLE | 0x0001)
-#define AUTHOR_NAME       (AUTHOR_TABLE | 0x0002)
-#define AUTHOR_BORN_YEAR  (AUTHOR_TABLE | 0x0003)
-#define AUTHOR_DIED_YEAR  (AUTHOR_TABLE | 0x0004)
-#define AUTHOR_BOOKS      (AUTHOR_TABLE | 0x0005)
+#define AUTHOR_ID (AUTHOR_TABLE | 0x0001)
+#define AUTHOR_NAME (AUTHOR_TABLE | 0x0002)
+#define AUTHOR_BORN_YEAR (AUTHOR_TABLE | 0x0003)
+#define AUTHOR_DIED_YEAR (AUTHOR_TABLE | 0x0004)
+#define AUTHOR_BOOKS (AUTHOR_TABLE | 0x0005)
 
 /* names */
 /*   books */
-#define BOOK_ID_NAME            "book_id"
-#define BOOK_TITLE_NAME         "book_title"
-#define BOOK_PUB_YEAR_NAME      "book_pub_year"
-#define BOOK_LANG_NAME          "book_original_language"
+#define BOOK_ID_NAME "book_id"
+#define BOOK_TITLE_NAME "book_title"
+#define BOOK_PUB_YEAR_NAME "book_pub_year"
+#define BOOK_LANG_NAME "book_original_language"
 
 /*   translation */
-#define TRANS_ID_NAME           "tr_id"
-#define TRANS_BOOK_ID_NAME      "tr_book_id"
-#define TRANS_LANG_NAME         "tr_language"
-#define TRANS_TRANS_TITLE_NAME  "tr_translated_name"
-#define TRANS_TRANSLATORS_NAME  "tr_translators"
+#define TRANS_ID_NAME "tr_id"
+#define TRANS_BOOK_ID_NAME "tr_book_id"
+#define TRANS_LANG_NAME "tr_language"
+#define TRANS_TRANS_TITLE_NAME "tr_translated_name"
+#define TRANS_TRANSLATORS_NAME "tr_translators"
 
 /*   author */
-#define AUTHOR_ID_NAME          "aut_id"
-#define AUTHOR_NAME_NAME        "aut_name"
-#define AUTHOR_BORN_YEAR_NAME   "aut_born_year"
-#define AUTHOR_DIED_YEAR_NAME   "aut_died_year"
-#define AUTHOR_BOOKS_NAME       "aut_books"
-
+#define AUTHOR_ID_NAME "aut_id"
+#define AUTHOR_NAME_NAME "aut_name"
+#define AUTHOR_BORN_YEAR_NAME "aut_born_year"
+#define AUTHOR_DIED_YEAR_NAME "aut_died_year"
+#define AUTHOR_BOOKS_NAME "aut_books"
 
 enum library_db_tables {
   table_undefined = UNDEFINED_TABLE,
@@ -90,12 +90,12 @@ enum library_db_tables {
 };
 
 /** \brief Перегруженные функции api БД */
-class LibraryDBTables final: public IDBTables {
+class LibraryDBTables final : public IDBTables {
   std::string GetTableName(db_table t) const override;
-  const db_fields_collection *GetFieldsCollection(db_table t) const override;
-  db_table StrToTableCode(const std::string &tname) const override;
+  const db_fields_collection* GetFieldsCollection(db_table t) const override;
+  db_table StrToTableCode(const std::string& tname) const override;
   std::string GetIdColumnName(db_table dt) const override;
-  const db_table_create_setup &CreateSetupByCode(db_table dt) const override;
+  const db_table_create_setup& CreateSetupByCode(db_table dt) const override;
 };
 
 /* Специализация шаблонов базового класса таблиц */
@@ -116,37 +116,39 @@ db_table IDBTables::GetTableCode<author>() const;
 
 /* setInsertValues */
 /** \brief Собрать вектор 'values' значений столбцов БД,
-  *   по переданным строкам book */
+ *   по переданным строкам book */
 template <>
-void IDBTables::setInsertValues<book>(db_query_insert_setup *src,
-    const book &select_data) const;
+void IDBTables::setInsertValues<book>(db_query_insert_setup* src,
+                                      const book& select_data) const;
 /** \brief Собрать вектор 'values' значений столбцов БД,
-  *   по переданным строкам translation */
+ *   по переданным строкам translation */
 template <>
-void IDBTables::setInsertValues<translation>(db_query_insert_setup *src,
-    const translation &select_data) const;
+void IDBTables::setInsertValues<translation>(
+    db_query_insert_setup* src,
+    const translation& select_data) const;
 /** \brief Собрать вектор 'values' значений столбцов БД,
-  *   по переданным строкам author */
+ *   по переданным строкам author */
 template <>
-void IDBTables::setInsertValues<author>(db_query_insert_setup *src,
-    const author &select_data) const;
+void IDBTables::setInsertValues<author>(db_query_insert_setup* src,
+                                        const author& select_data) const;
 
 /* SetSelectData */
 /** \brief Записать в out_vec строки book из данных values_vec,
-  *   полученных из БД
-  * \note Обратная операция для db_query_insert_setup::setValues */
+ *   полученных из БД
+ * \note Обратная операция для db_query_insert_setup::setValues */
 template <>
-void IDBTables::SetSelectData<book>(db_query_select_result *src,
-    std::vector<book> *out_vec) const;
+void IDBTables::SetSelectData<book>(db_query_select_result* src,
+                                    std::vector<book>* out_vec) const;
 /** \brief Записать в out_vec строки translation из данных values_vec,
-  *   полученных из БД */
+ *   полученных из БД */
 template <>
-void IDBTables::SetSelectData<translation>(db_query_select_result *src,
-    std::vector<translation> *out_vec) const;
+void IDBTables::SetSelectData<translation>(
+    db_query_select_result* src,
+    std::vector<translation>* out_vec) const;
 /** \brief Записать в out_vec строки author из данных values_vec,
-  *   полученных из БД */
+ *   полученных из БД */
 template <>
-void IDBTables::SetSelectData<author>(db_query_select_result *src,
-    std::vector<author> *out_vec) const;
+void IDBTables::SetSelectData<author>(db_query_select_result* src,
+                                      std::vector<author>* out_vec) const;
 
 #endif  // !EXAMPLES__LIBRARY_TABLES_H

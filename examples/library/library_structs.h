@@ -20,7 +20,6 @@
 
 #include <stdint.h>
 
-
 /* примерные типы данных */
 typedef int32_t row_id;
 /** \brief Язык, как пример enum */
@@ -53,11 +52,12 @@ struct book {
 
   int32_t initialized = 0;
 };
-inline std::string to_str(const book &b) {
+inline std::string to_str(const book& b) {
   return b.title + ", year: " + std::to_string(b.first_pub_year) +
-      ", lang code " + std::to_string(b.lang) + ", id " + std::to_string(b.id);
+         ", lang code " + std::to_string(b.lang) + ", id " +
+         std::to_string(b.id);
 }
-inline std::ostream &operator<< (std::ostream &stream, const book &b) {
+inline std::ostream& operator<<(std::ostream& stream, const book& b) {
   return stream << to_str(b) << std::endl;
 }
 
@@ -75,7 +75,7 @@ struct translation {
   inline bool IsFlagSet(initialized_flags f) const { return f & initialized; }
   row_id id;
   /** \brief Книги */
-  std::pair<row_id, book *> book_p;
+  std::pair<row_id, book*> book_p;
   language_t lang;
   std::string translated_name;
   std::string translators;
@@ -106,7 +106,7 @@ struct author {
 };
 
 template <class T>
-std::string insertValue2str(const T &s) {
+std::string insertValue2str(const T& s) {
   return std::to_string(s);
 }
 

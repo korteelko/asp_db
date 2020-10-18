@@ -19,19 +19,15 @@
 #include <stdint.h>
 
 /** \brief Поле ссылки */
-#define reference(_name, _type) (std::pair<row_id, _type *> _name)
+#define reference(_name, _type) (std::pair<row_id, _type*> _name)
 
-#define init_flag(_name) _name ## _flag
-
+#define init_flag(_name) _name##_flag
 
 typedef int32_t row_id;
 
 struct animal_t {
   std::string clade;
-  enum initialized {
-    init_flag(clade) = 0x01,
-    init_flag(full) = 0x01
-  };
+  enum initialized { init_flag(clade) = 0x01, init_flag(full) = 0x01 };
 };
 
 struct animal {

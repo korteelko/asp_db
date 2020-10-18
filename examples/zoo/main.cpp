@@ -9,16 +9,15 @@
  * This library is distributed under the MIT License.
  * See LICENSE file in the project root for full license information.
  */
+#include "Logging.h"
+#include "animals.h"
 #include "db_connection.h"
 #include "db_connection_manager.h"
-#include "animals.h"
 #include "zoo_tables.h"
-#include "Logging.h"
 
 #include <iostream>
 
 #include <assert.h>
-
 
 using namespace asp_db;
 
@@ -45,7 +44,7 @@ int test_table() {
   }
 }
 
-int main(int argc, char *argv[]) {
+int main(int argc, char* argv[]) {
   Logging::InitDefault();
   return test_table();
 }

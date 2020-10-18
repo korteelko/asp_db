@@ -11,38 +11,42 @@
 
 #include "db_connection_postgre.h"
 #if defined(WITH_POSTGRESQL)
-#  include "db_connection_postgre.h"
+#include "db_connection_postgre.h"
 #endif  // WITH_POSTGRESQL
 
 #include <ctime>
 
 #include <assert.h>
 
-
 namespace asp_db {
-logging_cfg postgres_logging_cfg(POSTGRE_DRYRUN_LOGGER, io_loglvl::info_logs,
-    POSTGRE_DRYRUN_LOGFILE, DEFAULT_MAXLEN_LOGFILE, DEFAULT_FLUSH_RATE, false);
+logging_cfg postgres_logging_cfg(POSTGRE_DRYRUN_LOGGER,
+                                 io_loglvl::info_logs,
+                                 POSTGRE_DRYRUN_LOGFILE,
+                                 DEFAULT_MAXLEN_LOGFILE,
+                                 DEFAULT_FLUSH_RATE,
+                                 false);
 
 // db_parameters::db_parameters()
 //   : supplier(db_client::NOONE) {}
 
-Transaction::Transaction(DBConnection *connection)
-  : status_(STATUS_DEFAULT), connection_(connection) {}
+Transaction::Transaction(DBConnection* connection)
+    : status_(STATUS_DEFAULT), connection_(connection) {}
 
-void Transaction::AddQuery(QuerySmartPtr &&query) {
+void Transaction::AddQuery(QuerySmartPtr&& query) {
   queries_.emplace_back(query);
 }
 
 mstatus_t Transaction::ExecuteQueries() {
   if (status_ == STATUS_DEFAULT) {
-    for (auto it_query = queries_.begin(); it_query != queries_.end(); it_query++) {
+    for (auto it_query = queries_.begin(); it_query != queries_.end();
+         it_query++) {
       status_ = (*it_query)->Execute();
       // если статус после выполнения не удовлетворителен -
       //   откатим все изменения, залогируем ошибку
       if (!is_status_ok(status_)) {
         (*it_query)->LogDBConnectionError();
         auto ri = std::make_reverse_iterator(it_query);
-        for (;ri != queries_.rend(); ++ri) {
+        for (; ri != queries_.rend(); ++ri) {
           if ((*ri)->IsPerformed())
             (*ri)->unExecute();
         }
@@ -53,17 +57,17 @@ mstatus_t Transaction::ExecuteQueries() {
   return status_;
 }
 
-DBConnection *Transaction::GetConnection() const {
+DBConnection* Transaction::GetConnection() const {
   return connection_;
 }
 
 /* DBException */
-DBException::DBException(merror_t error, const std::string &msg)
-  : error_(error, msg) {}
-DBException::DBException(const std::string &msg)
-  : DBException(ERROR_GENERAL_T, msg) {}
+DBException::DBException(merror_t error, const std::string& msg)
+    : error_(error, msg) {}
+DBException::DBException(const std::string& msg)
+    : DBException(ERROR_GENERAL_T, msg) {}
 
-DBException &DBException::AddTableCode(db_table table) {
+DBException& DBException::AddTableCode(db_table table) {
   table_ = table;
   return *this;
 }
@@ -88,7 +92,8 @@ mstatus_t DBConnectionManager::CheckConnection() {
   if (db_connection_ && is_status_aval(status_)) {
     // TODO: вообще клонировать надо только postgres подключение
     //   ввести флагец или что-либо похожее
-    auto connection = DBConnectionCreator().cloneConnection(db_connection_.get());
+    auto connection =
+        DBConnectionCreator().cloneConnection(db_connection_.get());
     if (connection.get()) {
       Transaction tr(connection.get());
       tr.AddQuery(QuerySmartPtr(new DBQuerySetupConnection(connection.get())));
@@ -104,15 +109,17 @@ mstatus_t DBConnectionManager::CheckConnection() {
       status_ = STATUS_HAVE_ERROR;
     }
   } else {
-    error_.SetError(ERROR_DB_CONNECTION, "Не удалось установить"
-        " соединение для БД: " + parameters_.GetInfo());
+    error_.SetError(ERROR_DB_CONNECTION,
+                    "Не удалось установить"
+                    " соединение для БД: " +
+                        parameters_.GetInfo());
     status_ = STATUS_HAVE_ERROR;
   }
   return status_;
 }
 
 mstatus_t DBConnectionManager::ResetConnectionParameters(
-    const db_parameters &parameters) {
+    const db_parameters& parameters) {
   parameters_ = parameters;
   status_ = STATUS_DEFAULT;
   error_.Reset();
@@ -121,24 +128,27 @@ mstatus_t DBConnectionManager::ResetConnectionParameters(
 
 bool DBConnectionManager::IsTableExists(db_table dt) {
   bool exists = false;
-  exec_wrap<db_table, bool, void (DBConnectionManager::*)(
-      Transaction *, db_table, bool *)>(dt, &exists,
-      &DBConnectionManager::isTableExist, nullptr);
+  exec_wrap<db_table, bool,
+            void (DBConnectionManager::*)(Transaction*, db_table, bool*)>(
+      dt, &exists, &DBConnectionManager::isTableExist, nullptr);
   return exists;
 }
 
 mstatus_t DBConnectionManager::CreateTable(db_table dt) {
   db_save_point sp("create_table");
-  return exec_wrap<db_table, void, void (DBConnectionManager::*)(
-      Transaction *, db_table, void *)>(dt, nullptr,
-      &DBConnectionManager::createTable, &sp);
+  return exec_wrap<db_table, void,
+                   void (DBConnectionManager::*)(Transaction*, db_table,
+                                                 void*)>(
+      dt, nullptr, &DBConnectionManager::createTable, &sp);
 }
 
 bool DBConnectionManager::CheckTableFormat(db_table dt) {
   db_table_create_setup cs_db(dt);
-  mstatus_t result = exec_wrap<db_table, db_table_create_setup, void (DBConnectionManager::*)(
-      Transaction *, db_table, db_table_create_setup *)>(dt, &cs_db,
-      &DBConnectionManager::getTableFormat, nullptr);
+  mstatus_t result =
+      exec_wrap<db_table, db_table_create_setup,
+                void (DBConnectionManager::*)(Transaction*, db_table,
+                                              db_table_create_setup*)>(
+          dt, &cs_db, &DBConnectionManager::getTableFormat, nullptr);
 
   if (is_status_ok(result)) {
     assert(0);
@@ -150,9 +160,11 @@ bool DBConnectionManager::CheckTableFormat(db_table dt) {
 
 mstatus_t DBConnectionManager::UpdateTableFormat(db_table dt) {
   db_table_create_setup cs_db(dt);
-  mstatus_t result = exec_wrap<db_table, db_table_create_setup, void (DBConnectionManager::*)(
-      Transaction *, db_table, db_table_create_setup *)>(dt, &cs_db,
-      &DBConnectionManager::getTableFormat, nullptr);
+  mstatus_t result =
+      exec_wrap<db_table, db_table_create_setup,
+                void (DBConnectionManager::*)(Transaction*, db_table,
+                                              db_table_create_setup*)>(
+          dt, &cs_db, &DBConnectionManager::getTableFormat, nullptr);
 
   if (is_status_ok(result)) {
     assert(0);
@@ -162,17 +174,16 @@ mstatus_t DBConnectionManager::UpdateTableFormat(db_table dt) {
   return result;
 }
 
-
 /*
 mstatus_t DBConnectionManager::DeleteModelInfo(model_info &where) {
   std::unique_ptr<db_query_delete_setup> dds(
-      db_query_delete_setup::Init(tables_, tables_->GetTableCode<model_info>()));
-  if (dds)
+      db_query_delete_setup::Init(tables_,
+tables_->GetTableCode<model_info>())); if (dds)
     dds->where_condition.reset(tables_->InitWhereTree<model_info>(where));
   db_save_point sp("delete_rows");
   return exec_wrap<const db_query_delete_setup &, void,
-      void (DBConnectionManager::*)(Transaction *, const db_query_delete_setup &,
-      void *)>(*dds, nullptr, &DBConnectionManager::deleteRows, &sp);
+      void (DBConnectionManager::*)(Transaction *, const db_query_delete_setup
+&, void *)>(*dds, nullptr, &DBConnectionManager::deleteRows, &sp);
 }
 */
 
@@ -188,8 +199,8 @@ std::string DBConnectionManager::GetErrorMessage() {
   return error_.GetMessage();
 }
 
-DBConnectionManager::DBConnectionManager(const IDBTables *tables)
-  : tables_(tables) {}
+DBConnectionManager::DBConnectionManager(const IDBTables* tables)
+    : tables_(tables) {}
 
 void DBConnectionManager::initDBConnection() {
 #ifdef CXX17
@@ -201,7 +212,7 @@ void DBConnectionManager::initDBConnection() {
   try {
     db_connection_ = std::unique_ptr<DBConnection>(
         DBConnectionCreator().initDBConnection(tables_, parameters_));
-  } catch (DBException &e) {
+  } catch (DBException& e) {
     e.LogException();
     // если даже объект подключения был создан - затереть его
     db_connection_ = nullptr;
@@ -209,45 +220,49 @@ void DBConnectionManager::initDBConnection() {
   if (!db_connection_) {
     status_ = STATUS_HAVE_ERROR;
     error_.SetError(ERROR_DB_CONNECTION,
-        "Подключение к базе данных не инициализировано");
+                    "Подключение к базе данных не инициализировано");
   }
 }
 
-void DBConnectionManager::isTableExist(Transaction *tr,
-    db_table dt, bool *is_exists) {
-  tr->AddQuery(QuerySmartPtr(new DBQueryIsTableExists(
-      tr->GetConnection(), dt, *is_exists)));
+void DBConnectionManager::isTableExist(Transaction* tr,
+                                       db_table dt,
+                                       bool* is_exists) {
+  tr->AddQuery(QuerySmartPtr(
+      new DBQueryIsTableExists(tr->GetConnection(), dt, *is_exists)));
 }
 
-void DBConnectionManager::createTable(Transaction *tr, db_table dt, void *) {
-  tr->AddQuery(QuerySmartPtr(new DBQueryCreateTable(tr->GetConnection(),
-      tables_->CreateSetupByCode(dt))));
+void DBConnectionManager::createTable(Transaction* tr, db_table dt, void*) {
+  tr->AddQuery(QuerySmartPtr(new DBQueryCreateTable(
+      tr->GetConnection(), tables_->CreateSetupByCode(dt))));
 }
 
-void DBConnectionManager::getTableFormat(Transaction *tr, db_table dt,
-    db_table_create_setup *exist_table) {
+void DBConnectionManager::getTableFormat(Transaction* tr,
+                                         db_table dt,
+                                         db_table_create_setup* exist_table) {
   assert(0);
 }
 
-void DBConnectionManager::saveRows(Transaction *tr,
-    const db_query_insert_setup &qi, id_container *id_vec) {
-  tr->AddQuery(QuerySmartPtr(
-      new DBQueryInsertRows(tr->GetConnection(), qi, id_vec)));
+void DBConnectionManager::saveRows(Transaction* tr,
+                                   const db_query_insert_setup& qi,
+                                   id_container* id_vec) {
+  tr->AddQuery(
+      QuerySmartPtr(new DBQueryInsertRows(tr->GetConnection(), qi, id_vec)));
 }
 
-void DBConnectionManager::selectRows(Transaction *tr,
-    const db_query_select_setup &qs, db_query_select_result *result) {
-  tr->AddQuery(QuerySmartPtr(
-      new DBQuerySelectRows(tr->GetConnection(), qs, result)));
+void DBConnectionManager::selectRows(Transaction* tr,
+                                     const db_query_select_setup& qs,
+                                     db_query_select_result* result) {
+  tr->AddQuery(
+      QuerySmartPtr(new DBQuerySelectRows(tr->GetConnection(), qs, result)));
 }
 
-void DBConnectionManager::deleteRows(Transaction *tr,
-     const db_query_delete_setup &qd, void *) {
-  tr->AddQuery(QuerySmartPtr(
-      new DBQueryDeleteRows(tr->GetConnection(), qd)));
+void DBConnectionManager::deleteRows(Transaction* tr,
+                                     const db_query_delete_setup& qd,
+                                     void*) {
+  tr->AddQuery(QuerySmartPtr(new DBQueryDeleteRows(tr->GetConnection(), qd)));
 }
 
-mstatus_t DBConnectionManager::tryExecuteTransaction(Transaction &tr) {
+mstatus_t DBConnectionManager::tryExecuteTransaction(Transaction& tr) {
 #ifdef CXX17
   std::shared_lock<SharedMutex> lock(connect_init_lock_);
 #else
@@ -256,9 +271,11 @@ mstatus_t DBConnectionManager::tryExecuteTransaction(Transaction &tr) {
   mstatus_t trans_st;
   try {
     trans_st = tr.ExecuteQueries();
-  } catch (const std::exception &e) {
-    error_.SetError(ERROR_DB_CONNECTION, "Во время попытки "
-        "подключения к БД перехвачено исключение: " + std::string(e.what()));
+  } catch (const std::exception& e) {
+    error_.SetError(ERROR_DB_CONNECTION,
+                    "Во время попытки "
+                    "подключения к БД перехвачено исключение: " +
+                        std::string(e.what()));
     error_.LogIt();
     trans_st = STATUS_HAVE_ERROR;
   }
@@ -271,12 +288,13 @@ DBConnectionManager::DBConnectionCreator::DBConnectionCreator() {}
 
 std::unique_ptr<DBConnection>
 DBConnectionManager::DBConnectionCreator::initDBConnection(
-    const IDBTables *tables, const db_parameters &parameters) {
+    const IDBTables* tables,
+    const db_parameters& parameters) {
   std::unique_ptr<DBConnection> connect = nullptr;
   switch (parameters.supplier) {
     case db_client::NOONE:
       break;
-  #if defined(WITH_POSTGRESQL)
+#if defined(WITH_POSTGRESQL)
     case db_client::POSTGRESQL:
       // зарегистрировать логгер для postgre
       if (!ConnectionCreator::db_logger_.IsRegistered(postgres_logging_cfg))
@@ -284,7 +302,7 @@ DBConnectionManager::DBConnectionCreator::initDBConnection(
       connect = std::make_unique<DBConnectionPostgre>(
           tables, parameters, &ConnectionCreator::db_logger_);
       break;
-  #endif  // WITH_POSTGRESQL
+#endif  // WITH_POSTGRESQL
     // TODO: можно тут ошибку установить
     default:
       break;
@@ -293,12 +311,12 @@ DBConnectionManager::DBConnectionCreator::initDBConnection(
 }
 
 std::shared_ptr<DBConnection>
-DBConnectionManager::DBConnectionCreator::cloneConnection(DBConnection *orig) {
+DBConnectionManager::DBConnectionCreator::cloneConnection(DBConnection* orig) {
   try {
     return (orig) ? orig->CloneConnection() : nullptr;
-  } catch (std::exception &e) {
-    Logging::Append(io_loglvl::err_logs, "Ошибка копирования соединения бд:\n"
-        + std::string(e.what()));
+  } catch (std::exception& e) {
+    Logging::Append(io_loglvl::err_logs, "Ошибка копирования соединения бд:\n" +
+                                             std::string(e.what()));
   }
   return nullptr;
 }
