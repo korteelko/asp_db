@@ -70,11 +70,12 @@ struct AppendOp {
    * \brief Инициализация функтора
    * \param _src Контейнер заполняемых данных
    * \param _ap_f Функция добавления в контейнер
-   * \param _to_type
+   * \param _to_type Функция преобразования к типу контейнера
+   *
+   * \warning Аргумент по умолчанию для шаблонного типа AppendF
+   *   не отрабатывает, приходится явно прокидывать
    * */
-  AppendOp(ContT<T>& _src,
-           AppendF _ap_f = append_push<T, ContT<T>>,
-           U _to_type = U())
+  AppendOp(ContT<T>& _src, AppendF _ap_f = append_push<T>, U _to_type = U())
       : src(_src), ap_f(_ap_f), to_type(_to_type) {}
 
   /**

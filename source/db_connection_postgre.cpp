@@ -806,8 +806,7 @@ void DBConnectionPostgre::addVariableToString(std::string *str_p,
     std::vector<std::string> vec;
     container_t n(vec);
     if (is_status_ok(db_variable::TranslateToVector(
-        // value, AppendOp(n)))) {
-        value, AppendOp(n, append_push<std::string>)))) {
+        value, AppendOp(n)))) {
       for (const auto &x: vec)
         str += getVariableValue(var, x);
       size_t lp = str.rfind(',');

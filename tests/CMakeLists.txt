@@ -41,6 +41,7 @@ if(${GTEST_FOUND})
 
     ${DATABASE_SOURCE}
     ${PROJECT_FULLTEST_DIR}/test_connection.cpp
+    ${PROJECT_FULLTEST_DIR}/test_expression.cpp
     ${PROJECT_FULLTEST_DIR}/test_tables.cpp
     ${PROJECT_FULLTEST_DIR}/test_queries.cpp
     ${LIBRARY_EXAMPLE_DIR}/library_tables.cpp
