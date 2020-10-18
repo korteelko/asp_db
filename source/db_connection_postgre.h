@@ -76,17 +76,25 @@ class DBConnectionPostgre final : public DBConnection {
                        db_query_select_result* result_data) override;
   mstatus_t UpdateRows(const db_query_update_setup& update_data) override;
 
-  /** \brief Переформатировать строку общего формата даты
-   *   'yyyy/mm/dd' к формату используемому БД */
+  /**
+   * \brief Переформатировать строку общего формата даты
+   *   "'yyyy/mm/dd'" к формату используемому БД("yyyy-mm-dd")
+   * */
   static std::string DateToPostgreDate(const std::string& date);
-  /** \brief Переформатировать строку общего формата времени
-   *   'hh:mm' к формату используемому БД */
+  /**
+   * \brief Переформатировать строку общего формата времени
+   *   'hh:mm' к формату используемому БД
+   * */
   static std::string TimeToPostgreTime(const std::string& time);
-  /** \brief Переформатировать строку общего формата даты БД
-   *   к формату 'yyyy/mm/dd' */
+  /**
+   * \brief Переформатировать строку общего формата даты
+   *   БД("yyyy-mm-dd") к формату "'yyyy/mm/dd'"
+   * */
   static std::string PostgreDateToDate(const std::string& pdate);
-  /** \brief Переформатировать строку общего формата времени БД
-   *   к формату 'hh:mm' */
+  /**
+   * \brief Переформатировать строку общего формата времени БД
+   *   к формату 'hh:mm'
+   * */
   static std::string PostgreTimeToTime(const std::string& ptime);
 
  private:

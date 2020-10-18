@@ -903,8 +903,14 @@ std::string DBConnectionPostgre::db_variable_to_string(const db_variable& dv) {
 }
 
 std::string DBConnectionPostgre::DateToPostgreDate(const std::string& date) {
-  // postgres need
   char s[16] = {0};
+  if (date.size() > 16)
+    throw DBException(ERROR_DB_VARIABLE,
+                      "Несопоставимый формат даты postgres модуля:\n"
+                      "\"" +
+                          date +
+                          "\" - лишние символы \n"
+                          "Используемый формат \"yyyy/mm/dd\"");
   int i = 0;
   for_each(date.begin(), date.end(),
            [&s, &i](char c) { s[i++] = (c == '/') ? '-' : c; });
@@ -917,6 +923,13 @@ std::string DBConnectionPostgre::TimeToPostgreTime(const std::string& time) {
 
 std::string DBConnectionPostgre::PostgreDateToDate(const std::string& pdate) {
   char s[16] = {0};
+  if (pdate.size() > 16)
+    throw DBException(ERROR_DB_VARIABLE,
+                      "Несопоставимый формат даты postgres модуля :\n"
+                      "\"" +
+                          pdate +
+                          "\" - лишние символы\n"
+                          "Используемый формат \"yyyy-mm-dd\"");
   int i = 0;
   for_each(pdate.begin(), pdate.end(),
            [&s, &i](char c) { s[i++] = (c == '-') ? '/' : c; });
