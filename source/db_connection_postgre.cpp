@@ -66,23 +66,37 @@ db_type find_type(const std::string& uppercase_str) {
   return db_type::type_empty;
 }
 
-/** \brief Функтор для сетапа полей деревьев условий для PostgreSQL СУБД */
+/**
+ * \brief Функтор для сетапа полей деревьев условий для
+ *   PostgreSQL СУБД
+ * */
 struct where_string_set {
+  /* todo: может несколько изменить идею преобразования строк
+   *   к более обобщённой, через мапу функций или т.п.:
+   * static std::map<db_type,
+   *                 std::function<std::string(const std::string & )>>
+   *     fmap = {
+   *   {db_type::type_date, DBConnectionPostgre::DateToPostgreDate},
+   *   {db_type::type_time, DBConnectionPostgre::TimeToPostgreTime},
+   *   ...
+   * };`
+   */
+
   where_string_set(pqxx::nontransaction* tr) : tr(tr) {}
 
   std::string operator()(db_type t,
                          const std::string& f,
                          const where_node_data& v) {
     if (t == db_type::type_date) {
-      return f + " = " + DBConnectionPostgre::DateToPostgreDate(v.value);
+      return f + " = " + DBConnectionPostgre::DateToPostgreDate(v.GetString());
     } else if (t == db_type::type_time) {
-      return f + " = " + DBConnectionPostgre::TimeToPostgreTime(v.value);
+      return f + " = " + DBConnectionPostgre::TimeToPostgreTime(v.GetString());
     }
     bool need_quote =
         (t == db_type::type_char_array || t == db_type::type_text);
     // для опции dry_run указатель не проинциализирован
-    return (need_quote && tr) ? f + " = " + tr->quote(v.value)
-                              : f + " = " + v.value;
+    return (need_quote && tr) ? f + " = " + tr->quote(v.GetString())
+                              : f + " = " + v.GetString();
   }
 
  public:
@@ -836,7 +850,7 @@ void DBConnectionPostgre::addVariableToString(std::string* str_p,
   if (var.flags.is_array && t != db_type::type_char_array) {
     std::string str = "ARRAY[";
     std::vector<std::string> vec;
-    container_t n(vec);
+    vector_wrapper n(vec);
     if (is_status_ok(db_variable::TranslateToVector(value, AppendOp(n)))) {
       for (const auto& x : vec)
         str += getVariableValue(var, x);

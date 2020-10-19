@@ -23,7 +23,7 @@
 #include "ErrorWrap.h"
 #include "db_append_functor.h"
 
-// database connection
+// todo: remove codes to ErrorWrap.h
 /** \brief Ошибка работы с базой данных */
 #define ERROR_DATABASE_T 0x0007
 

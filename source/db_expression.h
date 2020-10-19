@@ -19,6 +19,7 @@
 
 #include <functional>
 #include <memory>
+#include <variant>
 
 #include <assert.h>
 
@@ -57,11 +58,9 @@ std::string DataToStr(db_type t, const std::string& f, const T& v) {
 
 struct where_node_data;
 template <>
-inline std::string DataToStr<where_node_data>(db_type t,
-                                              const std::string& f,
-                                              const where_node_data& v) {
-  return "";
-}
+std::string DataToStr<where_node_data>(db_type t,
+                                       const std::string& f,
+                                       const where_node_data& v);
 
 /**
  * \brief Операторы отношений условий
@@ -107,14 +106,25 @@ std::string data2str(db_operator_t op);
  * */
 struct where_node_data {
  public:
-  /// Оператор where выражения
-  db_operator_t op;
-  /// Строковое представление значения
-  std::string value;
+  /**
+   * \brief Объединение - или оператор where выражения, или строковое
+   *   представление значения узла
+   * */
+  std::variant<db_operator_t, std::string> data;
 
  public:
   where_node_data(db_operator_t _op);
-  where_node_data(db_type, const std::string&, const std::string& _value);
+  where_node_data(const std::string& _value);
+  /**
+   * \brief Получить строковое представление данных
+   * */
+  std::string GetString() const;
+  /**
+   * \brief Про верить тип хранимых данных `db_operator_t`
+   *
+   * \return true Для оператора бд, false для строк
+   * */
+  bool IsOperator() const;
 };
 /**
  * \brief Структура описывающая дерево логических отношений
@@ -136,16 +146,9 @@ struct expression_node {
    * */
   T field_data;
 
-  bool visited = false;
-
  public:
   expression_node(const T& data) : field_data(data) {}
 
-  /**
-   * \brief Получить строковое представление дерева
-   * \note Предварительный сетап данных для операций с СУБД
-   * */
-  std::string GetString(DataToStrF dts = DataToStr<T>) const;
   /**
    * \brief Обновить корень дерева
    * \param op Операция БД, инициализирует новый корень дерева
@@ -155,8 +158,21 @@ struct expression_node {
    * \return Новый указатель на корневой элемент дерева условий
    * */
   std::shared_ptr<expression_node> CreateNewRoot(
-      const T&,
+      const T& op,
       const std::shared_ptr<expression_node>& right);
+  /**
+   * \brief Проверить наличие подузлов
+   *
+   * \return true Если подузлы есть
+   * */
+  bool HaveSubnodes() const {
+    return (left.get() == nullptr) && (right.get() == nullptr);
+  }
+  /**
+   * \brief Получить строковое представление дерева
+   * \note Предварительный сетап данных для операций с СУБД
+   * */
+  std::string GetString(DataToStrF dts = DataToStr<T>) const;
 
  protected:
   std::shared_ptr<expression_node> left = nullptr;

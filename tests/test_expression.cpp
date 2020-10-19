@@ -58,30 +58,30 @@ class AspDBExpressionTest : public ::testing::Test {
 TEST(AppendOp, TemplateInitialization) {
   // значения по умолчанию
   std::vector<std::string> v1;
-  container_t cv1(v1);
+  vector_wrapper cv1(v1);
   AppendOp a1(cv1);
   // default converter
-  AppendOp a2(cv1, [](container_t<std::string>& c, const std::string& t) {
+  AppendOp a2(cv1, [](vector_wrapper<std::string>& c, const std::string& t) {
     c.v.push_back(t);
   });
   // lambda converter
   AppendOp a3(
       cv1,
-      [](container_t<std::string>& c, const std::string& t) {
+      [](vector_wrapper<std::string>& c, const std::string& t) {
         c.v.push_back(t);
       },
       [](const std::string& s) { return s; });
   // function converter
   AppendOp a4(
       cv1,
-      [](container_t<std::string>& c, const std::string& t) {
+      [](vector_wrapper<std::string>& c, const std::string& t) {
         c.v.push_back(t);
       },
       convert_str);
   // functor converter
   AppendOp a5(
       cv1,
-      [](container_t<std::string>& c, const std::string& t) {
+      [](vector_wrapper<std::string>& c, const std::string& t) {
         c.v.push_back(t);
       },
       cs());
@@ -103,7 +103,7 @@ TEST(AppendOp, TemplateInitialization) {
 TEST(condition_node, CheckDefault) {
   /* default AppendOp */
   std::vector<std::string> v;
-  container_t cv1(v);
+  vector_wrapper cv1(v);
   AppendOp a1(cv1);
   std::vector<std::string> v1_src{"", " ", "io oi"};
   a1(v1_src[0]);
@@ -115,7 +115,7 @@ TEST(condition_node, CheckDefault) {
   v.clear();
   AppendOp a2(
       cv1,
-      [](container_t<std::string>& c, const std::string& t) {
+      [](vector_wrapper<std::string>& c, const std::string& t) {
         c.v.push_back(t);
       },
       convert_int);

@@ -32,18 +32,19 @@ struct integer2str {
 };
 
 /**
- * \brief Шаблонный функтор заполнения вектора данных
+ * \brief Шаблонный функтор заполнения контейнера данных
  * */
 template <class T>
-struct container_t {
+struct vector_wrapper {
   std::vector<T>& v;
-  container_t(std::vector<T>& _v) : v(_v) {}
-  void operator()(const T& t) { v.push_back(t); }
+  vector_wrapper(std::vector<T>& _v) : v(_v) {}
+  void operator()(const T& t) const { v.push_back(t); }
 };
+
 /**
  * \brief Шаблонная функция
  * */
-template <class T, template <class> class ContT = container_t>
+template <class T, template <class> class ContT = vector_wrapper>
 void append_push(ContT<T>& src, const T& s) {
   src(s);
 }
@@ -56,7 +57,7 @@ void append_push(ContT<T>& src, const T& s) {
  *   хранимому контейнером, см. использование
  * */
 template <class T,
-          template <class> class ContT = container_t,
+          template <class> class ContT = vector_wrapper,
           class AppendF = std::function<void(ContT<T>&, const T&)>,
           class U = pass<std::string>>
 struct AppendOp {
