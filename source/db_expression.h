@@ -119,6 +119,7 @@ struct where_node_data {
     /// значение поля
     value
   };
+
  public:
   /**
    * \brief Объединение - или оператор where выражения или строковое
@@ -142,7 +143,7 @@ struct where_node_data {
   /**
    * \brief Создать ноду с данными имени или значения столбца БД
    * */
-  where_node_data(const db_table_pair &value);
+  where_node_data(const db_table_pair& value);
   /**
    * \brief Создать ноду с данными имени столбца
    * */
@@ -287,8 +288,9 @@ using db_condition_node = expression_node<where_node_data>;
  * */
 template <db_operator_t op>
 struct where_node_creator {
-  static std::shared_ptr<db_condition_node> create(const std::string& fname,
-                                                   const where_table_pair& value) {
+  static std::shared_ptr<db_condition_node> create(
+      const std::string& fname,
+      const where_table_pair& value) {
     auto result =
         std::make_shared<db_condition_node>(db_operator_wrapper(op, false));
     result->CreateLeftNode(fname);

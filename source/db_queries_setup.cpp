@@ -162,7 +162,7 @@ std::unique_ptr<db_where_tree> db_query_insert_setup::InitWhereTree() {
     return nullptr;
   assert(0);
   // std::unique_ptr<db_where_tree> wt(new db_where_tree());
-  //std::shared_ptr<db_where_tree::condition_source> source(
+  // std::shared_ptr<db_where_tree::condition_source> source(
   //    new db_where_tree::condition_source);
   auto& row = values_vec[0];
   for (const auto& x : row) {
@@ -175,8 +175,8 @@ std::unique_ptr<db_where_tree> db_query_insert_setup::InitWhereTree() {
     }
   }
   assert(0);
-  //std::unique_ptr<db_where_tree> wt = std::make_unique<db_where_tree>(source);
-  //return wt;
+  // std::unique_ptr<db_where_tree> wt =
+  // std::make_unique<db_where_tree>(source); return wt;
   return nullptr;
 }
 
