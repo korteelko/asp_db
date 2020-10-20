@@ -25,42 +25,19 @@
 
 namespace asp_db {
 /**
- * \brief Прототип шблона функции конвертации данных узла в строку по умолчанию.
+ * \brief Декларация типа функции конвертации данных поля таблицы БД типа `t`
+ *   к строковому представлению
  * */
-template <class T>
-std::string DataToStr(db_variable_type t, const std::string& f, const T& v);
+typedef std::function<std::string(db_variable_type, const std::string&)>
+    DataFieldToStrF;
 /**
- * \brief Функция конвертации данных узла в строку по умолчанию.
- *   Составит строку вида:
+ * \brief Функция конвертации данных поля таблицы БД типа `t`
+ *   в строку по умолчанию.
+ *
+ * Составит строку вида:
  *   `f + " = " + v`, для текстовых полей `v` в кавычки возьмёт
  * */
-template <>
-std::string DataToStr<std::string>(db_variable_type t,
-                                   const std::string& f,
-                                   const std::string& v);
-/**
- * \brief Функция конвертации данных узла в строку для
- *   типа поля таблицы
- * */
-template <>
-std::string DataToStr<db_variable>(db_variable_type t,
-                                   const std::string& f,
-                                   const db_variable& v);
-/**
- * \brief Функция конвертации данных численного узла в строку по умолчанию.
- * */
-template <
-    class T,
-    typename = typename std::enable_if<std::is_arithmetic<T>::value, T>::type>
-std::string DataToStr(db_variable_type t, const std::string& f, const T& v) {
-  return DataToStr<std::string>(t, f, std::to_string(v));
-}
-
-struct where_node_data;
-template <>
-std::string DataToStr<where_node_data>(db_variable_type t,
-                                       const std::string& f,
-                                       const where_node_data& v);
+std::string DataFieldToStr(db_variable_type t, const std::string& v);
 
 /**
  * \brief Операторы отношений условий
@@ -163,13 +140,6 @@ struct expression_node {
    * */
   OWNER(db_where_tree);
   /**
-   * \brief Декларация функции приведения шаблонного типа к
-   *   строковому представлению для составления запросов
-   * */
-  typedef std::function<
-      std::string(db_variable_type, const std::string&, const T&)>
-      DataToStrF;
-  /**
    * \brief Структура данных узла
    * */
   T field_data;
@@ -229,7 +199,7 @@ struct expression_node {
    * \brief Получить строковое представление дерева
    * \note Предварительный сетап данных для операций с СУБД
    * */
-  std::string GetString(DataToStrF dts = DataToStr<T>) const;
+  std::string GetString(DataFieldToStrF dts = DataFieldToStr) const;
 
   std::shared_ptr<expression_node> GetLeft() const { return left; }
 
@@ -239,20 +209,18 @@ struct expression_node {
   std::shared_ptr<expression_node> left = nullptr;
   std::shared_ptr<expression_node> right = nullptr;
 };
-
+/**
+ * \brief Собрать строку поддерева
+ * */
 template <class T>
-std::string expression_node<T>::GetString(DataToStrF dts) const {
+std::string expression_node<T>::GetString(DataFieldToStrF dts) const {
   std::string l, r;
-  std::string result;
-  assert(0);
-  // если поддеревьев нет, собрать строку
-  // if (db_operator == db_operator_t::op_empty)
-  //  return dts(data.type, data.field_name, data.field_data);
+  std::string result = field_data.GetString();
   if (left.get())
     l = left->GetString(dts);
   if (right.get())
     r = right->GetString(dts);
-  return result;
+  return l + result + r;
 }
 /**
  * \brief Декларация типа узлов условия для использования в `where_tree`
@@ -285,16 +253,17 @@ struct where_node_creator {
   }
 };
 // `like` or `not like`
+// todo: why compiler doesn't allow remove full specification in separate file
 template <>
 struct where_node_creator<db_operator_t::op_like> {
-  std::shared_ptr<db_condition_node> result;
-  where_node_creator(const std::string& fname,
-                     const std::string& value,
-                     bool inverse) {
-    result = std::make_shared<db_condition_node>(
+  static std::shared_ptr<db_condition_node> create(const std::string& fname,
+                                                   const std::string& value,
+                                                   bool inverse) {
+    auto result = std::make_shared<db_condition_node>(
         db_operator_wrapper(db_operator_t::op_like, inverse));
     result->CreateLeftNode(fname);
     result->CreateRightNode(value);
+    return result;
   }
 };
 // `in` or `not in`
@@ -341,8 +310,13 @@ class DBWhereClause {
 
   /**
    * \brief Собрать строку условного выражения
+   *
+   * \param dts Функция преобразования данных в строковые - для составления
+   *   SQL строки. Нужна т.к. структуры могут содержать какие либо
+   * специализированные поля либо по-своему их обрабатывать. pqxx, например,
+   * текстовые данные обрабатывает через объект pqxx::nontransaction
    * */
-  std::string GetString(db_condition_node::DataToStrF dts = DataToStr<T>) const;
+  std::string GetString(DataFieldToStrF dts = DataFieldToStr) const;
   /**
    * \brief Собрать строку `where` выражения по имеющимся данным
    * */
@@ -385,8 +359,7 @@ class db_where_tree {
   /**
    * \brief Собрать строку условного выражения
    * */
-  std::string GetString(
-      db_condition_node::DataToStrF dts = DataToStr<where_node_data>) const;
+  std::string GetString(DataFieldToStrF dts = DataFieldToStr) const;
 
  protected:
   /**

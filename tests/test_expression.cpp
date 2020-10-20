@@ -150,9 +150,68 @@ TEST(condition_node, CheckMap) {
  * \brief Тест инстанцирования основного шаблона
  * */
 TEST(where_node_creator, main_template) {
-  auto res =
+  // eq
+  auto res_eq =
       where_node_creator<db_operator_t::op_eq>::create("salud", "hello world!");
-  EXPECT_EQ(res->field_data.GetString(), " = ");
-  EXPECT_EQ(res->GetLeft()->field_data.GetString(), "salud");
-  EXPECT_EQ(res->GetRight()->field_data.GetString(), "hello world!");
+  EXPECT_EQ(res_eq->field_data.GetString(),
+            data2str(db_operator_wrapper(db_operator_t::op_eq)));
+  EXPECT_EQ(res_eq->GetLeft()->field_data.GetString(), "salud");
+  EXPECT_EQ(res_eq->GetRight()->field_data.GetString(), "hello world!");
+
+  EXPECT_EQ(res_eq->GetString(),
+            "salud" + data2str(db_operator_wrapper(db_operator_t::op_eq)) +
+                "hello world!");
+
+  // and
+  auto res_and = where_node_creator<db_operator_t::op_and>::create(
+      "salud", "hello world!");
+  EXPECT_EQ(res_and->field_data.GetString(),
+            data2str(db_operator_wrapper(db_operator_t::op_and)));
+  EXPECT_EQ(res_and->GetLeft()->field_data.GetString(), "salud");
+  EXPECT_EQ(res_and->GetRight()->field_data.GetString(), "hello world!");
+  EXPECT_EQ(res_and->GetString(),
+            "salud" + data2str(db_operator_wrapper(db_operator_t::op_and)) +
+                "hello world!");
+
+  // or with nothing
+  auto res_or = where_node_creator<db_operator_t::op_and>::create("", "");
+  EXPECT_EQ(res_or->field_data.GetString(),
+            data2str(db_operator_wrapper(db_operator_t::op_and)));
+  EXPECT_EQ(res_or->GetLeft()->field_data.GetString(), "");
+  EXPECT_EQ(res_or->GetRight()->field_data.GetString(), "");
+  EXPECT_EQ(res_or->GetString(),
+            data2str(db_operator_wrapper(db_operator_t::op_and)));
+}
+
+TEST(where_node_creator, specializations) {
+  // simple like
+  auto res_like = where_node_creator<db_operator_t::op_like>::create(
+      "salud", "hello world!", false);
+  EXPECT_EQ(res_like->field_data.GetString(),
+            data2str(db_operator_wrapper(db_operator_t::op_like)));
+  EXPECT_EQ(res_like->GetLeft()->field_data.GetString(), "salud");
+  EXPECT_EQ(res_like->GetRight()->field_data.GetString(), "hello world!");
+  EXPECT_EQ(res_like->GetString(),
+            "salud" + data2str(db_operator_wrapper(db_operator_t::op_like)) +
+                "hello world!");
+  EXPECT_STRCASEEQ(res_like->GetString().c_str(), "salud like hello world!");
+
+  // not like
+  auto notlike = db_operator_wrapper(db_operator_t::op_like, true);
+  auto res_nlike = where_node_creator<db_operator_t::op_like>::create(
+      "salud", "hello world!", true);
+  EXPECT_EQ(res_nlike->field_data.GetString(), data2str(notlike));
+  EXPECT_EQ(res_nlike->GetLeft()->field_data.GetString(), "salud");
+  EXPECT_EQ(res_nlike->GetRight()->field_data.GetString(), "hello world!");
+  EXPECT_EQ(res_nlike->GetString(),
+            "salud" + data2str(notlike) + "hello world!");
+  EXPECT_STRCASEEQ(res_nlike->GetString().c_str(),
+                   "salud not like hello world!");
+
+  // todo: between tests
+}
+
+TEST(db_where_tree, checkDts) {
+  auto res_or = where_node_creator<db_operator_t::op_and>::create("ob", "blob");
+  // res_or->GetString([])
 }

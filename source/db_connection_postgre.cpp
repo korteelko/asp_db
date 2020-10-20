@@ -31,29 +31,29 @@ namespace asp_db {
 /* примеры использования можно посмотреть на github, в репке Jeroen Vermeulen:
      https://github.com/jtv/libpqxx */
 namespace postgresql_impl {
-/** \brief Мапа соответствий типов данных db_type библиотеки
+/** \brief Мапа соответствий типов данных db_variable_type библиотеки
  *   с PostgreSQL типами данных */
-static std::map<db_type, std::string> str_db_types =
-    std::map<db_type, std::string>{
-        types_pair(db_type::type_empty, ""),
-        types_pair(db_type::type_autoinc, "SERIAL"),
-        types_pair(db_type::type_uuid, "UUID"),
-        types_pair(db_type::type_bool, "BOOL"),
-        types_pair(db_type::type_int, "INTEGER"),
-        types_pair(db_type::type_long, "BIGINT"),
-        types_pair(db_type::type_real, "REAL"),
-        types_pair(db_type::type_date, "DATE"),
-        types_pair(db_type::type_time, "TIME"),
+static std::map<db_variable_type, std::string> str_db_variable_types =
+    std::map<db_variable_type, std::string>{
+        types_pair(db_variable_type::type_empty, ""),
+        types_pair(db_variable_type::type_autoinc, "SERIAL"),
+        types_pair(db_variable_type::type_uuid, "UUID"),
+        types_pair(db_variable_type::type_bool, "BOOL"),
+        types_pair(db_variable_type::type_int, "INTEGER"),
+        types_pair(db_variable_type::type_long, "BIGINT"),
+        types_pair(db_variable_type::type_real, "REAL"),
+        types_pair(db_variable_type::type_date, "DATE"),
+        types_pair(db_variable_type::type_time, "TIME"),
         // todo: в pgAdmin4 'char' выглядит как 'character' или как 'text'
-        types_pair(db_type::type_char_array, "CHAR"),
-        types_pair(db_type::type_text, "TEXT"),
+        types_pair(db_variable_type::type_char_array, "CHAR"),
+        types_pair(db_variable_type::type_text, "TEXT"),
     };
 /** \brief Найти соответствующий строковому представлению
  *   тип данных приложения
  * \todo Получается весьма тонкое место,
  *   из-за специализации времени например */
-db_type find_type(const std::string& uppercase_str) {
-  for (const auto& x : str_db_types)
+db_variable_type find_type(const std::string& uppercase_str) {
+  for (const auto& x : str_db_variable_types)
     if (x.second == uppercase_str)
       return x.first;
   /* Несколько специфичные типы */
@@ -61,9 +61,9 @@ db_type find_type(const std::string& uppercase_str) {
    *   инфо по временному поясу так что это надо расширять */
   std::size_t find_pos = uppercase_str.find("TIME");
   if (find_pos != std::string::npos)
-    return db_type::type_time;
+    return db_variable_type::type_time;
   /* про соотношение character/text не знаю что делать */
-  return db_type::type_empty;
+  return db_variable_type::type_empty;
 }
 
 /**
@@ -73,30 +73,29 @@ db_type find_type(const std::string& uppercase_str) {
 struct where_string_set {
   /* todo: может несколько изменить идею преобразования строк
    *   к более обобщённой, через мапу функций или т.п.:
-   * static std::map<db_type,
+   * static std::map<db_variable_type,
    *                 std::function<std::string(const std::string & )>>
    *     fmap = {
-   *   {db_type::type_date, DBConnectionPostgre::DateToPostgreDate},
-   *   {db_type::type_time, DBConnectionPostgre::TimeToPostgreTime},
+   *   {db_variable_type::type_date, DBConnectionPostgre::DateToPostgreDate},
+   *   {db_variable_type::type_time, DBConnectionPostgre::TimeToPostgreTime},
    *   ...
    * };`
    */
 
   where_string_set(pqxx::nontransaction* tr) : tr(tr) {}
-
-  std::string operator()(db_type t,
-                         const std::string& f,
-                         const where_node_data& v) {
-    if (t == db_type::type_date) {
-      return f + " = " + DBConnectionPostgre::DateToPostgreDate(v.GetString());
-    } else if (t == db_type::type_time) {
-      return f + " = " + DBConnectionPostgre::TimeToPostgreTime(v.GetString());
+  /**
+   * \brief Преобразование данных поля к читаемому postgres
+   * */
+  std::string operator()(db_variable_type t, const std::string& v) {
+    if (t == db_variable_type::type_date) {
+      return DBConnectionPostgre::DateToPostgreDate(v);
+    } else if (t == db_variable_type::type_time) {
+      return DBConnectionPostgre::TimeToPostgreTime(v);
     }
-    bool need_quote =
-        (t == db_type::type_char_array || t == db_type::type_text);
+    bool need_quote = (t == db_variable_type::type_char_array ||
+                       t == db_variable_type::type_text);
     // для опции dry_run указатель не проинциализирован
-    return (need_quote && tr) ? f + " = " + tr->quote(v.GetString())
-                              : f + " = " + v.GetString();
+    return (need_quote && tr) ? tr->quote(v) : v;
   }
 
  public:
@@ -847,7 +846,7 @@ void DBConnectionPostgre::addVariableToString(std::string* str_p,
                                               const db_variable& var,
                                               const std::string& value) {
   db_variable::db_var_type t = var.type;
-  if (var.flags.is_array && t != db_type::type_char_array) {
+  if (var.flags.is_array && t != db_variable_type::type_char_array) {
     std::string str = "ARRAY[";
     std::vector<std::string> vec;
     vector_wrapper n(vec);
@@ -869,13 +868,14 @@ std::string DBConnectionPostgre::getVariableValue(const db_variable& var,
                                                   const std::string& value) {
   db_variable::db_var_type t = var.type;
   std::string str = "";
-  if ((t == db_type::type_char_array || t == db_type::type_text)) {
+  if ((t == db_variable_type::type_char_array ||
+       t == db_variable_type::type_text)) {
     auto txn = pqxx_work.GetTransaction();
     if (txn)
       str = txn->quote(value) + ", ";
-  } else if (t == db_type::type_date) {
+  } else if (t == db_variable_type::type_date) {
     str = DateToPostgreDate(value) + ", ";
-  } else if (t == db_type::type_time) {
+  } else if (t == db_variable_type::type_time) {
     str = TimeToPostgreTime(value) + ", ";
   } else {
     str += value + ", ";
@@ -888,16 +888,16 @@ std::string DBConnectionPostgre::db_variable_to_string(const db_variable& dv) {
   merror_t ew = dv.CheckYourself();
   if (!ew) {
     ss << dv.fname << " ";
-    auto itDBtype = postgresql_impl::str_db_types.find(dv.type);
-    if (itDBtype != postgresql_impl::str_db_types.end()) {
+    auto itDBtype = postgresql_impl::str_db_variable_types.find(dv.type);
+    if (itDBtype != postgresql_impl::str_db_variable_types.end()) {
       // todo: вроде как здесь пример для массива символов
       //   в обычном массиве скобки квадратны, и пусты могут быть
       // алсо, как насчёт массива массивов
-      ss << postgresql_impl::str_db_types[dv.type];
+      ss << postgresql_impl::str_db_variable_types[dv.type];
       if (dv.flags.is_array) {
         // если dv.len == 0, то массив не ограничен(так можно)
         std::string len_str = (dv.len > 0) ? std::to_string(dv.len) : "";
-        if (dv.type == db_type::type_char_array)
+        if (dv.type == db_variable_type::type_char_array)
           ss << "(" << len_str << ")";
         else
           ss << "[" << len_str << "]";

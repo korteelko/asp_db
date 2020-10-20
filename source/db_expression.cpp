@@ -12,28 +12,19 @@
 #include <stack>
 
 namespace asp_db {
-template <>
-std::string DataToStr(db_variable_type t,
-                      const std::string& f,
-                      const std::string& v) {
+std::string DataFieldToStr(db_variable_type t, const std::string& v) {
   return (t == db_variable_type::type_char_array ||
           t == db_variable_type::type_text)
-             ? f + " = '" + v + "'"
-             : f + " = " + v;
-}
-
-template <>
-std::string DataToStr<where_node_data>(db_variable_type t,
-                                       const std::string& f,
-                                       const where_node_data& v) {
-  return DataToStr<std::string>(t, f, v.GetString());
+             ? "'" + v + "'"
+             : v;
 }
 
 db_operator_wrapper::db_operator_wrapper(db_operator_t _op, bool _inverse)
     : op(_op), inverse(_inverse) {}
 
 std::string data2str(db_operator_wrapper op) {
-  std::string result = (op.inverse) ? "NOT" : "";
+  // ?? ну не знаю
+  std::string result = (op.inverse) ? " NOT" : "";
   switch (op.op) {
     case db_operator_t::op_is:
       result = " IS " + result;
@@ -118,7 +109,7 @@ db_where_tree::db_where_tree(std::shared_ptr<condition_source> source)
   }
 }
 
-std::string db_where_tree::GetString(db_condition_node::DataToStrF dts) const {
+std::string db_where_tree::GetString(DataFieldToStrF dts) const {
   /*if (root_) {
     for_each(source_->data.begin(), source_->data.end(),
              [](auto c) { c->visited = false; });
