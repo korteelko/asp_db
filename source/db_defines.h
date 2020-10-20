@@ -159,7 +159,10 @@ struct db_variable {
  public:
   /** \brief id столбца/параметра, чтоб создавать и апдейтить */
   db_variable_id fid;
-  /** \brief имя столбца/параметра, чтоб создавать и апдейтить */
+  /**
+   * \brief имя столбца/параметра, чтоб создавать и апдейтить
+   * \todo да почему не стринга то?
+   * */
   const char* fname;
   /** \brief тип значения */
   db_var_type type;
@@ -237,13 +240,13 @@ struct db_variable {
     return st;
   }
 };
-using db_type = db_variable::db_var_type;
+using db_variable_type = db_variable::db_var_type;
 /**
  * \brief Перегрузка функции приведения данных контейнера к строковому
  *   представлению
  * */
 template <class ContT>
-std::string field2str(db_type, const ContT& c) {
+std::string field2str(db_variable_type, const ContT& c) {
   return TranslateFromVector(c.begin(), c.end());
 }
 /**
@@ -251,7 +254,7 @@ std::string field2str(db_type, const ContT& c) {
  *   поддержания интерфейса преобразования значений полей таблицы
  *   к их строковым представлениям
  * */
-inline std::string field2str(db_type, const std::string& str) {
+inline std::string field2str(db_variable_type, const std::string& str) {
   return str;
 }
 /**
@@ -261,7 +264,7 @@ inline std::string field2str(db_type, const std::string& str) {
 template <
     class T,
     typename = typename std::enable_if<std::is_arithmetic<T>::value, T>::type>
-std::string field2str(db_type, const T& t) {
+std::string field2str(db_variable_type, const T& t) {
   return std::to_string(t);
 }
 

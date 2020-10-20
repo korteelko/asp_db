@@ -98,7 +98,7 @@ TEST(AppendOp, TemplateInitialization) {
       mm, [](my_map<std::string>& c, const std::string& t) { c(t); }, y);
 }
 /**
- * \brief Тест дефолтного дерева условий
+ * \brief Тест дефолтного AppendOp для дерева условий
  * */
 TEST(condition_node, CheckDefault) {
   /* default AppendOp */
@@ -143,4 +143,16 @@ TEST(condition_node, CheckMap) {
   for (auto p : mm.source) {
     EXPECT_NE(std::find(v1_src.begin(), v1_src.end(), p.second), v1_src.end());
   }
+}
+
+/* test сбора деревьев запроса */
+/**
+ * \brief Тест инстанцирования основного шаблона
+ * */
+TEST(where_node_creator, main_template) {
+  auto res =
+      where_node_creator<db_operator_t::op_eq>::create("salud", "hello world!");
+  EXPECT_EQ(res->field_data.GetString(), " = ");
+  EXPECT_EQ(res->GetLeft()->field_data.GetString(), "salud");
+  EXPECT_EQ(res->GetRight()->field_data.GetString(), "hello world!");
 }

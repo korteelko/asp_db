@@ -28,14 +28,14 @@ namespace asp_db {
  * \brief Прототип шблона функции конвертации данных узла в строку по умолчанию.
  * */
 template <class T>
-std::string DataToStr(db_type t, const std::string& f, const T& v);
+std::string DataToStr(db_variable_type t, const std::string& f, const T& v);
 /**
  * \brief Функция конвертации данных узла в строку по умолчанию.
  *   Составит строку вида:
  *   `f + " = " + v`, для текстовых полей `v` в кавычки возьмёт
  * */
 template <>
-std::string DataToStr<std::string>(db_type t,
+std::string DataToStr<std::string>(db_variable_type t,
                                    const std::string& f,
                                    const std::string& v);
 /**
@@ -43,7 +43,7 @@ std::string DataToStr<std::string>(db_type t,
  *   типа поля таблицы
  * */
 template <>
-std::string DataToStr<db_variable>(db_type t,
+std::string DataToStr<db_variable>(db_variable_type t,
                                    const std::string& f,
                                    const db_variable& v);
 /**
@@ -52,13 +52,13 @@ std::string DataToStr<db_variable>(db_type t,
 template <
     class T,
     typename = typename std::enable_if<std::is_arithmetic<T>::value, T>::type>
-std::string DataToStr(db_type t, const std::string& f, const T& v) {
+std::string DataToStr(db_variable_type t, const std::string& f, const T& v) {
   return DataToStr<std::string>(t, f, std::to_string(v));
 }
 
 struct where_node_data;
 template <>
-std::string DataToStr<where_node_data>(db_type t,
+std::string DataToStr<where_node_data>(db_variable_type t,
                                        const std::string& f,
                                        const where_node_data& v);
 
@@ -71,8 +71,12 @@ enum class db_operator_t {
   op_empty = 0,
   /** \brief IS */
   op_is,
-  /** \brief IS NOT */
-  op_not,
+  /**
+   * \brief IS NOT
+   *
+   * Попробуем задавать флагом инвертирования
+   * */
+  // op_not,
   /** \brief оператор поиска в листе */
   op_in,
   /** \brief оператор поиска в коллекции */
@@ -96,24 +100,41 @@ enum class db_operator_t {
   /** \brief < меньше */
   op_lt,
 };
+struct db_operator_wrapper {
+  db_operator_t op;
+  bool inverse;
+
+  db_operator_wrapper(db_operator_t _op, bool _inverse = false);
+};
 /**
  * \brief Перегрузка функции получения строкового представления
  *   для типа операторов ДБ
  * */
-std::string data2str(db_operator_t op);
+std::string data2str(db_operator_wrapper op);
+
 /**
  * \brief Структура данных узла запросов 'where clause'
+ *
+ *   В узле у нас получается может либо прятаться оператор
+ * либо уже какое то значение.
+ * Очевидно:
+ *   1. Оператор не может быть конечным узлом;
+ *   2. `Значение`, вообще говоря, может быть именем поля,
+ * а не строкой данных;
  * */
 struct where_node_data {
  public:
   /**
    * \brief Объединение - или оператор where выражения, или строковое
    *   представление значения узла
+   *
+   * \note Вообще наверно вторым типом нужно прокидывать не строку,
+   *   а db_variable_type или какого-либо вмда ссылку на него
    * */
-  std::variant<db_operator_t, std::string> data;
+  std::variant<db_operator_wrapper, std::string> data;
 
  public:
-  where_node_data(db_operator_t _op);
+  where_node_data(db_operator_wrapper _op);
   where_node_data(const std::string& _value);
   /**
    * \brief Получить строковое представление данных
@@ -127,7 +148,13 @@ struct where_node_data {
   bool IsOperator() const;
 };
 /**
- * \brief Структура описывающая дерево логических отношений
+ * \brief Структура описывающая дерево логических
+ *   (или обычное арифмитическое) отношений
+ *
+ *   Т.к. не все узлы могу быть конечными, это накладывает
+ * ограничения на функционал сбора деревьев:
+ *   - можно добавлять только валидные поддеревья
+ *   - корень дерева - оператор, если дерево не пусто
  * */
 template <class T>
 struct expression_node {
@@ -139,7 +166,8 @@ struct expression_node {
    * \brief Декларация функции приведения шаблонного типа к
    *   строковому представлению для составления запросов
    * */
-  typedef std::function<std::string(db_type, const std::string&, const T&)>
+  typedef std::function<
+      std::string(db_variable_type, const std::string&, const T&)>
       DataToStrF;
   /**
    * \brief Структура данных узла
@@ -149,24 +177,53 @@ struct expression_node {
  public:
   expression_node(const T& data) : field_data(data) {}
 
+  void CreateLeftNode(const T& l) {
+    left = std::make_shared<expression_node>(l);
+  }
+  void CreateRightNode(const T& r) {
+    right = std::make_shared<expression_node>(r);
+  }
+  void AddLeftNode(const std::shared_ptr<expression_node>& l) { left = l; }
+  void AddRightNode(const std::shared_ptr<expression_node>& r) { right = r; }
+
   /**
-   * \brief Обновить корень дерева
+   * \brief Добавить ещё одно условие к существующему дереву
+   *
    * \param op Операция БД, инициализирует новый корень дерева
    * \param right Указатель на правый(или левый - тут без разницы)
    *   узел дерева условий
    *
    * \return Новый указатель на корневой элемент дерева условий
+   *
+   * Example:
+   *   Original tree `Tree`:
+   *                       V
+   *                      / \
+   *   (A ^ B) V C ->    ^   C
+   *                    / \
+   *                   A   B
+   *
+   *  Tree.AddCondition(`V`, D);
+   *                               V
+   *                              / \
+   *   ((A ^ B) V C) V D  ->     V   D
+   *                            / \
+   *                           ^   C
+   *                          / \
+   *                         A   B
    * */
-  std::shared_ptr<expression_node> CreateNewRoot(
+  std::shared_ptr<expression_node> AddCondition(
       const T& op,
-      const std::shared_ptr<expression_node>& right);
+      const std::shared_ptr<expression_node>& right) {
+    assert(0);
+  }
   /**
    * \brief Проверить наличие подузлов
    *
    * \return true Если подузлы есть
    * */
   bool HaveSubnodes() const {
-    return (left.get() == nullptr) && (right.get() == nullptr);
+    return !((left.get() == nullptr) && (right.get() == nullptr));
   }
   /**
    * \brief Получить строковое представление дерева
@@ -174,14 +231,14 @@ struct expression_node {
    * */
   std::string GetString(DataToStrF dts = DataToStr<T>) const;
 
+  std::shared_ptr<expression_node> GetLeft() const { return left; }
+
+  std::shared_ptr<expression_node> GetRight() const { return right; }
+
  protected:
   std::shared_ptr<expression_node> left = nullptr;
   std::shared_ptr<expression_node> right = nullptr;
 };
-/**
- * \brief Декларация типа узлов условия для использования в `where_tree`
- * */
-using db_condition_node = expression_node<where_node_data>;
 
 template <class T>
 std::string expression_node<T>::GetString(DataToStrF dts) const {
@@ -197,6 +254,81 @@ std::string expression_node<T>::GetString(DataToStrF dts) const {
     r = right->GetString(dts);
   return result;
 }
+/**
+ * \brief Декларация типа узлов условия для использования в `where_tree`
+ * */
+using db_condition_node = expression_node<where_node_data>;
+/**
+ * \brief Шаблончик на сетап поддеревьев
+ *
+ * Здесь общий шаблон вида:
+ *   `x` operator `X`
+ * */
+template <db_operator_t op>
+struct where_node_creator {
+  static std::shared_ptr<db_condition_node> create(const std::string& fname,
+                                                   const std::string& value) {
+    auto result =
+        std::make_shared<db_condition_node>(db_operator_wrapper(op, false));
+    result->CreateLeftNode(fname);
+    result->CreateRightNode(value);
+    return result;
+  }
+  static std::shared_ptr<db_condition_node> create(
+      const std::string& fname,
+      std::shared_ptr<db_condition_node>& cond) {
+    auto result =
+        std::make_shared<db_condition_node>(db_operator_wrapper(op, false));
+    result->CreateLeftNode(fname);
+    result->AddRightNode(cond);
+    return result;
+  }
+};
+// `like` or `not like`
+template <>
+struct where_node_creator<db_operator_t::op_like> {
+  std::shared_ptr<db_condition_node> result;
+  where_node_creator(const std::string& fname,
+                     const std::string& value,
+                     bool inverse) {
+    result = std::make_shared<db_condition_node>(
+        db_operator_wrapper(db_operator_t::op_like, inverse));
+    result->CreateLeftNode(fname);
+    result->CreateRightNode(value);
+  }
+};
+// `in` or `not in`
+template <>
+struct where_node_creator<db_operator_t::op_in> {
+  std::shared_ptr<db_condition_node> result;
+  where_node_creator(const std::string& fname,
+                     const std::vector<std::string>& values,
+                     bool inverse) {
+    result = std::make_shared<db_condition_node>(
+        db_operator_wrapper(db_operator_t::op_in, inverse));
+    result->CreateLeftNode(fname);
+    result->CreateRightNode(join_container(values, ',').str());
+  }
+};
+// `between` or `not between`
+template <>
+struct where_node_creator<db_operator_t::op_between> {
+  std::shared_ptr<db_condition_node> result;
+  where_node_creator(const std::string& fname,
+                     const std::string& left,
+                     const std::string& right,
+                     bool inverse) {
+    result = std::make_shared<db_condition_node>(
+        db_operator_wrapper(db_operator_t::op_between, inverse));
+    result->CreateLeftNode(fname);
+    // добавить `and` поддерево с граница `between`
+    auto r = std::make_shared<db_condition_node>(
+        db_operator_wrapper(db_operator_t::op_and, false));
+    r->CreateLeftNode(left);
+    r->CreateRightNode(right);
+    result->AddRightNode(r);
+  }
+};
 
 /**
  * \brief Класс инкапсулирующий функционал оператора WHERE
