@@ -92,38 +92,85 @@ std::string data2str(db_operator_wrapper op);
 /**
  * \brief Структура данных узла запросов 'where clause'
  *
- *   В узле у нас получается может либо прятаться оператор
- * либо уже какое то значение.
+ *   В узле у нас получается может либо прятаться оператор,
+ * либо имя поля, либо значение поля.
  * Очевидно:
  *   1. Оператор не может быть конечным узлом;
- *   2. `Значение`, вообще говоря, может быть именем поля,
- * а не строкой данных;
+ *   2. `Значение поля`, вообще говоря, может форматироваться особым
+ * образом, поэтому мы должны разделять 2 строковых представления -
+ * имя столбца(поля) и его значения
  * */
 struct where_node_data {
+  typedef std::pair<db_variable_type, std::string> db_table_pair;
+  /**
+   * \brief Перечисление типов данных, хранимых в поле данных.
+   *
+   *   В поле данных может храниться имя поля, оператор where
+   * условия или значение поля. Собственно говоря, они могут и
+   * обрабатываться по разному. Вот 'значение поля' может хранить
+   * данные специфичного формата.
+   * */
+  enum class ndata_type : uint32_t {
+    undefined = 0,
+    /// имя колонки таблицы
+    field_name,
+    /// оператор `where` условия ('EQ', 'LIKE' etc)
+    db_operator,
+    /// значение поля
+    value
+  };
  public:
   /**
-   * \brief Объединение - или оператор where выражения, или строковое
-   *   представление значения узла
+   * \brief Объединение - или оператор where выражения или строковое
+   *   представление значения таблицы бд(имени колонки или её значение)
    *
    * \note Вообще наверно вторым типом нужно прокидывать не строку,
    *   а db_variable_type или какого-либо вмда ссылку на него
    * */
-  std::variant<db_operator_wrapper, std::string> data;
+  std::variant<db_operator_wrapper, db_table_pair> data;
+  ndata_type ntype = ndata_type::undefined;
 
  public:
-  where_node_data(db_operator_wrapper _op);
-  where_node_data(const std::string& _value);
+  /**
+   * \brief Создать ноду с данными оператора
+   * */
+  where_node_data(db_operator_wrapper op);
+  /**
+   * \brief Создать ноду с данными значения столбца БД
+   * */
+  where_node_data(db_variable_type db_v, const std::string& value);
+  /**
+   * \brief Создать ноду с данными имени или значения столбца БД
+   * */
+  where_node_data(const db_table_pair &value);
+  /**
+   * \brief Создать ноду с данными имени столбца
+   * */
+  where_node_data(const std::string& fname);
   /**
    * \brief Получить строковое представление данных
    * */
   std::string GetString() const;
   /**
-   * \brief Про верить тип хранимых данных `db_operator_t`
+   * \brief Получить данные пары
+   * */
+  db_table_pair GetTablePair() const;
+  /**
+   * \brief Проверить тип хранимых данных `db_operator_t`
    *
-   * \return true Для оператора бд, false для строк
+   * \return true Для оператора бд, false для db_table_pair
    * */
   bool IsOperator() const;
+  /**
+   * \brief Проверить тип хранимых данных является именем поля
+   *
+   * \return true Для имени поля
+   * */
+  bool IsFieldName() const;
 };
+using where_ndata_type = where_node_data::ndata_type;
+using where_table_pair = where_node_data::db_table_pair;
+
 /**
  * \brief Структура описывающая дерево логических
  *   (или обычное арифмитическое) отношений
@@ -215,7 +262,13 @@ struct expression_node {
 template <class T>
 std::string expression_node<T>::GetString(DataFieldToStrF dts) const {
   std::string l, r;
-  std::string result = field_data.GetString();
+  std::string result;
+  if (field_data.IsOperator() || field_data.IsFieldName()) {
+    result = field_data.GetString();
+  } else {
+    auto p = field_data.GetTablePair();
+    result = dts(p.first, p.second);
+  }
   if (left.get())
     l = left->GetString(dts);
   if (right.get())
@@ -235,7 +288,7 @@ using db_condition_node = expression_node<where_node_data>;
 template <db_operator_t op>
 struct where_node_creator {
   static std::shared_ptr<db_condition_node> create(const std::string& fname,
-                                                   const std::string& value) {
+                                                   const where_table_pair& value) {
     auto result =
         std::make_shared<db_condition_node>(db_operator_wrapper(op, false));
     result->CreateLeftNode(fname);

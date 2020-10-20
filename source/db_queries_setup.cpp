@@ -160,9 +160,10 @@ size_t db_query_insert_setup::RowsSize() const {
 std::unique_ptr<db_where_tree> db_query_insert_setup::InitWhereTree() {
   if (values_vec.empty())
     return nullptr;
+  assert(0);
   // std::unique_ptr<db_where_tree> wt(new db_where_tree());
-  std::shared_ptr<db_where_tree::condition_source> source(
-      new db_where_tree::condition_source);
+  //std::shared_ptr<db_where_tree::condition_source> source(
+  //    new db_where_tree::condition_source);
   auto& row = values_vec[0];
   for (const auto& x : row) {
     auto i = x.first;
@@ -173,8 +174,10 @@ std::unique_ptr<db_where_tree> db_query_insert_setup::InitWhereTree() {
       //    where_node_data(f.type, std::string(f.fname), x.second)));
     }
   }
-  std::unique_ptr<db_where_tree> wt = std::make_unique<db_where_tree>(source);
-  return wt;
+  assert(0);
+  //std::unique_ptr<db_where_tree> wt = std::make_unique<db_where_tree>(source);
+  //return wt;
+  return nullptr;
 }
 
 /* db_table_select_setup */

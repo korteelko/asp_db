@@ -279,6 +279,15 @@ mstatus_t DBConnectionPostgre::IsTableExists(db_table t, bool* is_exists) {
 
 // todo: в методе смешаны уровни абстракции,
 //   разбить на парочку/другую методов или функций
+// UPD: т.к. время на то чтобы это доделать появится
+//   чуть ближе чем случится второе пришествие, просто
+//   нарисую птичку в луже
+/*
+ *              __
+ *          ___( o)>
+ *          \ <_. )
+ *     ~~~~~~~~~~~~~~~~~~~~
+ */
 mstatus_t DBConnectionPostgre::GetTableFormat(db_table t,
                                               db_table_create_setup* fields) {
   assert(0 && "не оттестированно");
@@ -714,7 +723,7 @@ std::stringstream DBConnectionPostgre::setupUpdateString(
     if (fields.where_condition != nullptr)
       str = fields.where_condition->GetString(ws);
     if (!trim_str(str).empty())
-      sstr << " WHERE " << fields.where_condition->GetString(ws);
+      sstr << " WHERE " << str;
     sstr << ";";
   }
   return sstr;

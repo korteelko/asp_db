@@ -152,7 +152,8 @@ TEST(condition_node, CheckMap) {
 TEST(where_node_creator, main_template) {
   // eq
   auto res_eq =
-      where_node_creator<db_operator_t::op_eq>::create("salud", "hello world!");
+      where_node_creator<db_operator_t::op_eq>::create("salud",
+                                                       where_table_pair(db_variable_type::type_int, "hello world!"));
   EXPECT_EQ(res_eq->field_data.GetString(),
             data2str(db_operator_wrapper(db_operator_t::op_eq)));
   EXPECT_EQ(res_eq->GetLeft()->field_data.GetString(), "salud");
@@ -163,8 +164,8 @@ TEST(where_node_creator, main_template) {
                 "hello world!");
 
   // and
-  auto res_and = where_node_creator<db_operator_t::op_and>::create(
-      "salud", "hello world!");
+  auto res_and = where_node_creator<db_operator_t::op_and>::create("salud",
+                                                       where_table_pair(db_variable_type::type_int, "hello world!"));
   EXPECT_EQ(res_and->field_data.GetString(),
             data2str(db_operator_wrapper(db_operator_t::op_and)));
   EXPECT_EQ(res_and->GetLeft()->field_data.GetString(), "salud");
@@ -174,13 +175,23 @@ TEST(where_node_creator, main_template) {
                 "hello world!");
 
   // or with nothing
-  auto res_or = where_node_creator<db_operator_t::op_and>::create("", "");
+  auto res_or = where_node_creator<db_operator_t::op_and>::create("",
+                                                       where_table_pair(db_variable_type::type_bool, ""));
   EXPECT_EQ(res_or->field_data.GetString(),
             data2str(db_operator_wrapper(db_operator_t::op_and)));
   EXPECT_EQ(res_or->GetLeft()->field_data.GetString(), "");
   EXPECT_EQ(res_or->GetRight()->field_data.GetString(), "");
   EXPECT_EQ(res_or->GetString(),
             data2str(db_operator_wrapper(db_operator_t::op_and)));
+  // or for text
+  auto res_or1 = where_node_creator<db_operator_t::op_and>::create("",
+                                                       where_table_pair(db_variable_type::type_text, ""));
+  EXPECT_EQ(res_or1->field_data.GetString(),
+            data2str(db_operator_wrapper(db_operator_t::op_and)));
+  EXPECT_EQ(res_or1->GetLeft()->field_data.GetString(), "");
+  EXPECT_EQ(res_or1->GetRight()->field_data.GetString(), "");
+  EXPECT_EQ(res_or1->GetString(),
+            data2str(db_operator_wrapper(db_operator_t::op_and)) + "''");
 }
 
 TEST(where_node_creator, specializations) {
@@ -211,7 +222,7 @@ TEST(where_node_creator, specializations) {
   // todo: between tests
 }
 
-TEST(db_where_tree, checkDts) {
-  auto res_or = where_node_creator<db_operator_t::op_and>::create("ob", "blob");
+TEST(db_where_tree, DISABLED_checkDts) {
+  //auto res_or = where_node_creator<db_operator_t::op_and>::create("ob", "blob");
   // res_or->GetString([])
 }

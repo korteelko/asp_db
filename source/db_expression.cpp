@@ -8,6 +8,7 @@
  * See LICENSE file in the project root for full license information.
  */
 #include "db_expression.h"
+#include "Logging.h"
 
 #include <stack>
 
@@ -71,22 +72,56 @@ std::string data2str(db_operator_wrapper op) {
   return result;
 }
 
-where_node_data::where_node_data(db_operator_wrapper _op) : data(_op) {}
+where_node_data::where_node_data(db_operator_wrapper op)
+    : data(op), ntype(ndata_type::db_operator) {}
 
-where_node_data::where_node_data(const std::string& _value) : data(_value) {}
+where_node_data::where_node_data(db_variable_type db_v, const std::string& value)
+    : data(db_table_pair(db_v, value)), ntype(ndata_type::value) {}
+
+where_node_data::where_node_data(const db_table_pair &value)
+  : data(value) {
+  if (value.first == db_variable_type::type_empty) {
+    // если тип данных в паре пуст, то строка пары - имя поля
+    ntype = ndata_type::field_name;
+  } else {
+    // если тип данных специализирован, то это значеник поля
+    ntype = ndata_type::value;
+  }
+}
+
+where_node_data::where_node_data(const std::string& fname)
+    : data(db_table_pair(db_variable_type::type_empty, fname)), ntype(ndata_type::field_name) {}
 
 std::string where_node_data::GetString() const {
-  return (IsOperator()) ? data2str(std::get<db_operator_wrapper>(data))
-                        : std::get<std::string>(data);
+  if (IsOperator()) {
+    try {
+      return data2str(std::get<db_operator_wrapper>(data));
+    } catch (std::bad_variant_access &) {
+      // это не рантайм ошибка, это ошибка программиста
+      Logging::Append(io_loglvl::info_logs, "Ошибка приведения типа для "
+                      "узла условий where. line" + STRING_DEBUG_INFO);
+    }
+  }
+  return GetTablePair().second;
+}
+
+where_table_pair where_node_data::GetTablePair() const {
+  try {
+    return std::get<db_table_pair>(data);
+  } catch (std::bad_variant_access &) {
+    Logging::Append(io_loglvl::info_logs, "Ошибка приведения типа для "
+                    "узла условий where. Функция вернёт NullObject\n" +
+                    STRING_DEBUG_INFO);
+  }
+  return db_table_pair(db_variable_type::type_empty, "");
 }
 
 bool where_node_data::IsOperator() const {
-  try {
-    std::get<db_operator_wrapper>(data);
-  } catch (std::bad_variant_access&) {
-    return false;
-  }
-  return true;
+  return ntype == ndata_type::db_operator;
+}
+
+bool where_node_data::IsFieldName() const {
+  return ntype == ndata_type::field_name;
 }
 
 /* db_where_tree */
