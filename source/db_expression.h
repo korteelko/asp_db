@@ -1,4 +1,4 @@
-/**
+﻿/**
  * asp_therm - implementation of real gas equations of state
  * ===================================================================
  * * db_expression *
@@ -15,6 +15,7 @@
 
 #include "Common.h"
 #include "ErrorWrap.h"
+#include "Logging.h"
 #include "db_defines.h"
 
 #include <functional>
@@ -41,7 +42,6 @@ std::string DataFieldToStr(db_variable_type t, const std::string& v);
 
 /**
  * \brief Операторы отношений условий
- * \note чё там унарые то операторы то подвезли?
  * */
 enum class db_operator_t {
   /** \brief Пустой оператор */
@@ -66,7 +66,10 @@ enum class db_operator_t {
   op_or,
   /** \brief == равно */
   op_eq,
-  /** \brief != не равно */
+  /**
+   * \brief != не равно
+   * \todo убрать его наверное, флагом инверсии задавать
+   * */
   op_ne,
   /** \brief >= больше или равно */
   op_ge,
@@ -78,7 +81,18 @@ enum class db_operator_t {
   op_lt,
 };
 struct db_operator_wrapper {
+  /**
+   * \brief Оператор выражения
+   * */
   db_operator_t op;
+  /**
+   * \brief Флаг инверсии оператора
+   *
+   *   Актуален для операторов `IN`, `LIKE`, `BETWEEN` и переводит их
+   * соответственно в `NOT IN`, `NOT LIKE`, `NOT BETWEEN`
+   *
+   * \todo Наверное переименовать его, не соовсем суть отражает
+   * */
   bool inverse;
 
   db_operator_wrapper(db_operator_t _op, bool _inverse = false);
@@ -101,6 +115,10 @@ std::string data2str(db_operator_wrapper op);
  * имя столбца(поля) и его значения
  * */
 struct where_node_data {
+  /* NOTE:
+   * - Наверное в структуру нужно было завернуть, а не pair
+   * - Имя тоже неудачное, указывает на пару, а должно на
+   *   то что это обёртка над значением табицы*/
   typedef std::pair<db_variable_type, std::string> db_table_pair;
   /**
    * \brief Перечисление типов данных, хранимых в поле данных.
@@ -283,6 +301,7 @@ std::string expression_node<T>::GetString(DataFieldToStrF dts) const {
  * \brief Декларация типа узлов условия для использования в `where_tree`
  * */
 using db_condition_node = expression_node<where_node_data>;
+
 /**
  * \brief Шаблончик на сетап поддеревьев
  *
@@ -291,6 +310,15 @@ using db_condition_node = expression_node<where_node_data>;
  * */
 template <db_operator_t op>
 struct where_node_creator {
+  /**
+   * \brief Создать поддерево оператора, где в корневом узле хранится
+   *   оператор, специализированный шаблоном, слева узел имени поля `fname`,
+   *   справа значение поля.
+   *
+   * \param fname Имя поля
+   * \param value Обёртка над значением поля таблицы БД, содержит
+   *   и тип поля, и его строковое представление
+   * */
   static std::shared_ptr<db_condition_node> create(
       const std::string& fname,
       const where_table_pair& value) {
@@ -361,13 +389,54 @@ struct where_node_creator<db_operator_t::op_between> {
 };
 
 /**
- * \brief Класс инкапсулирующий функционал оператора WHERE
+ * \brief Класс инкапсулирующий функционал сбора выражения WHERE
  * */
 template <class T>
 class DBWhereClause {
  public:
-  DBWhereClause();
-  DBWhereClause(std::shared_ptr<expression_node<T>> root);
+  DBWhereClause(const T& value) {
+    root = std::make_shared<expression_node<T>>(value);
+  }
+  DBWhereClause(std::shared_ptr<expression_node<T>> _root) : root(_root) {}
+
+  /**
+   * \brief Добавить поддерево условий привязавшись к уже имеющемуся
+   *   оператором `_op`
+   * */
+  mstatus_t AddCondition(db_operator_t _op,
+                         std::shared_ptr<expression_node<T>>& condition) {
+    mstatus_t ret = STATUS_HAVE_ERROR;
+    try {
+      auto r = expression_node<T>::AddCondition(_op, root, condition);
+      root = r;
+      ret = STATUS_OK;
+    } catch (std::bad_alloc&) {
+      Logging::Append(io_loglvl::err_logs,
+                      "Во время попытки добавления условия"
+                      " в AddCondition перхвачено исключение bad_alloc");
+    } catch (std::exception& e) {
+      Logging::Append(io_loglvl::err_logs,
+                      "Во время попытки добавления условия"
+                      " в AddCondition перхвачено общее исключение:\n" +
+                          std::string(e.what()));
+    }
+    return ret;
+  }
+  /**
+   * \brief Добавить поддерево условий привязавшись к уже имеющемуся
+   *   оператором `_op`
+   * */
+  mstatus_t AddCondition(db_operator_t _op, const T& value) {
+    auto r = std::make_shared<expression_node<T>>(value);
+    return AddCondition(_op, r);
+  }
+  /**
+   * \brief Влить в текущее дерево другре поддерево DBWhereClause,
+   *   разбив их оператором `op`
+   * */
+  mstatus_t MergeWhereClause(db_operator_t _op, const DBWhereClause& wclause) {
+    return AddCondition(_op, wclause.root);
+  }
 
   /**
    * \brief Собрать строку условного выражения
@@ -377,11 +446,12 @@ class DBWhereClause {
    * специализированные поля либо по-своему их обрабатывать. pqxx, например,
    * текстовые данные обрабатывает через объект pqxx::nontransaction
    * */
-  std::string GetString(DataFieldToStrF dts = DataFieldToStr) const;
-  /**
-   * \brief Собрать строку `where` выражения по имеющимся данным
-   * */
-  std::string BuildClause();
+  std::string GetString(DataFieldToStrF dts = DataFieldToStr) const {
+    if (root.get() != nullptr) {
+      return root->GetString(dts);
+    }
+    return "";
+  }
 
  protected:
   mstatus_t status_ = STATUS_DEFAULT;
@@ -391,6 +461,7 @@ class DBWhereClause {
   std::shared_ptr<expression_node<T>> root;
 };
 
+//#ifdef TO_REMOVE
 /**
  * \brief Дерево where условий
  * \note В общем и целом:
@@ -447,6 +518,7 @@ class db_where_tree {
    * */
   std::string data_;
 };
+// #endif  // TO_REMOVE
 }  // namespace asp_db
 
 #endif  // !_DATABASE__DB_EXPRESSION_H_

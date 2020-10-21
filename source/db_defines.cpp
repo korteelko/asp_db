@@ -35,7 +35,7 @@ std::string db_client_to_string(db_client client) {
 /* db_variable */
 db_variable::db_variable(db_variable_id fid,
                          const char* fname,
-                         db_var_type type,
+                         db_variable_type type,
                          db_variable_flags flags,
                          int len)
     : fid(fid), fname(fname), type(type), flags(flags), len(len) {}
@@ -46,7 +46,7 @@ merror_t db_variable::CheckYourself() const {
     ew = ERROR_DB_VARIABLE;
     Logging::Append(io_loglvl::err_logs,
                     "пустое имя поля таблицы бд" + STRING_DEBUG_INFO);
-  } else if (type == db_var_type::type_char_array &&
+  } else if (type == db_variable_type::type_char_array &&
              (!flags.is_array || len < 1)) {
     ew = ERROR_DB_VARIABLE;
     Logging::Append(io_loglvl::err_logs,

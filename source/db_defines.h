@@ -105,7 +105,7 @@ struct db_variable {
    * \todo А как правильно разграничить 'text' и 'char_array'
    *   postgre вот не парится, text'ом назвал char_array
    * */
-  enum class db_var_type {
+  enum class db_variable_type {
     /** пустой тип */
     type_empty = 0,
     /** автоинкрементируюмое поле id
@@ -165,7 +165,7 @@ struct db_variable {
    * */
   const char* fname;
   /** \brief тип значения */
-  db_var_type type;
+  db_variable_type type;
   /** \brief флаги колонуи таблицы */
   db_variable_flags flags;
   /** \brief дефолтное значение, если есть */
@@ -177,7 +177,7 @@ struct db_variable {
  public:
   db_variable(db_variable_id fid,
               const char* fname,
-              db_var_type type,
+              db_variable_type type,
               db_variable_flags flags,
               int len = 1);
 
@@ -240,7 +240,7 @@ struct db_variable {
     return st;
   }
 };
-using db_variable_type = db_variable::db_var_type;
+using db_variable_type = db_variable::db_variable_type;
 /**
  * \brief Перегрузка функции приведения данных контейнера к строковому
  *   представлению

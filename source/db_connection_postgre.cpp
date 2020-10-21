@@ -186,7 +186,7 @@ std::shared_ptr<DBConnection> DBConnectionPostgre::CloneConnection() {
 }
 
 DBConnectionPostgre::db_field_info::db_field_info(const std::string& name,
-                                                  db_variable::db_var_type type)
+                                                  db_variable_type type)
     : name(name), type(type) {}
 
 mstatus_t DBConnectionPostgre::AddSavePoint(const db_save_point& sp) {
@@ -317,10 +317,9 @@ mstatus_t DBConnectionPostgre::GetTableFormat(db_table t,
                                              db_variable::db_variable_flags()));
       } else {
         // поле с таким именем даже не нашлось, вставим заглушку
-        fields->fields.push_back(
-            db_variable(UNDEFINED_COLUMN, x.name.c_str(),
-                        db_variable::db_var_type::type_empty,
-                        db_variable::db_variable_flags()));
+        fields->fields.push_back(db_variable(UNDEFINED_COLUMN, x.name.c_str(),
+                                             db_variable_type::type_empty,
+                                             db_variable::db_variable_flags()));
       }
     }
   }
@@ -854,7 +853,7 @@ merror_t DBConnectionPostgre::setConstrainVector(
 void DBConnectionPostgre::addVariableToString(std::string* str_p,
                                               const db_variable& var,
                                               const std::string& value) {
-  db_variable::db_var_type t = var.type;
+  db_variable_type t = var.type;
   if (var.flags.is_array && t != db_variable_type::type_char_array) {
     std::string str = "ARRAY[";
     std::vector<std::string> vec;
@@ -875,7 +874,7 @@ void DBConnectionPostgre::addVariableToString(std::string* str_p,
 
 std::string DBConnectionPostgre::getVariableValue(const db_variable& var,
                                                   const std::string& value) {
-  db_variable::db_var_type t = var.type;
+  db_variable_type t = var.type;
   std::string str = "";
   if ((t == db_variable_type::type_char_array ||
        t == db_variable_type::type_text)) {

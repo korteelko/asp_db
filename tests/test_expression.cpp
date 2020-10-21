@@ -222,7 +222,7 @@ TEST(where_node_creator, specializations) {
 
   // todo: between tests
 }
-TEST(db_where_tree, complex_condition) {
+TEST(db_where, complex_condition) {
   // eq
   auto res_eq = where_node_creator<db_operator_t::op_eq>::create(
       "id", where_table_pair(db_variable_type::type_int, "12"));
@@ -241,8 +241,32 @@ TEST(db_where_tree, complex_condition) {
   EXPECT_STRCASEEQ(root->GetString().c_str(), root_str.c_str());
 }
 
-TEST(db_where_tree, DISABLED_checkDts) {
-  // auto res_or = where_node_creator<db_operator_t::op_and>::create("ob",
-  // "blob");
-  // res_or->GetString([])
+std::string test_dts(db_variable_type t, const std::string& v) {
+  std::string res = "";
+  if (t == db_variable_type::type_int) {
+    auto i = std::atoi(v.c_str());
+    res = std::to_string(i + 2);
+  } else if (t == db_variable_type::type_empty) {
+    res = "empty";
+  } else if (t == db_variable_type::type_text) {
+    res = "'" + v + "'";
+  }
+  return res;
+}
+
+TEST(db_where, checkDts) {
+  auto res_eq = where_node_creator<db_operator_t::op_eq>::create(
+      "ob", where_table_pair(db_variable_type::type_int, "4"));
+  auto res_is = where_node_creator<db_operator_t::op_is>::create(
+      "obo", where_table_pair(db_variable_type::type_text, "hello world!"));
+  std::shared_ptr<db_condition_node> root = db_condition_node::AddCondition(
+      db_operator_wrapper(db_operator_t::op_and, false), res_eq, res_is);
+  std::string root_str = res_eq->GetString() +
+                         data2str(db_operator_wrapper(db_operator_t::op_and)) +
+                         res_is->GetString();
+  EXPECT_STRCASEEQ(root->GetString().c_str(), root_str.c_str());
+}
+
+TEST(DBWhereClause, DISABLED_Init) {
+  DBWhereClause<where_node_data> w(where_node_data("fname"));
 }
