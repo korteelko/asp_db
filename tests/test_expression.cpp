@@ -196,7 +196,8 @@ TEST(where_node_creator, main_template) {
 TEST(where_node_creator, specializations) {
   // simple like
   auto res_like = where_node_creator<db_operator_t::op_like>::create(
-      "salud", "hello world!", false);
+      "salud", where_table_pair(db_variable_type::type_int, "hello world!"),
+      false);
   EXPECT_EQ(res_like->field_data.GetString(),
             data2str(db_operator_wrapper(db_operator_t::op_like)));
   EXPECT_EQ(res_like->GetLeft()->field_data.GetString(), "salud");
@@ -209,16 +210,35 @@ TEST(where_node_creator, specializations) {
   // not like
   auto notlike = db_operator_wrapper(db_operator_t::op_like, true);
   auto res_nlike = where_node_creator<db_operator_t::op_like>::create(
-      "salud", "hello world!", true);
+      "salud", where_table_pair(db_variable_type::type_text, "hello world!"),
+      true);
   EXPECT_EQ(res_nlike->field_data.GetString(), data2str(notlike));
   EXPECT_EQ(res_nlike->GetLeft()->field_data.GetString(), "salud");
   EXPECT_EQ(res_nlike->GetRight()->field_data.GetString(), "hello world!");
   EXPECT_EQ(res_nlike->GetString(),
-            "salud" + data2str(notlike) + "hello world!");
+            "salud" + data2str(notlike) + "'hello world!'");
   EXPECT_STRCASEEQ(res_nlike->GetString().c_str(),
-                   "salud not like hello world!");
+                   "salud not like 'hello world!'");
 
   // todo: between tests
+}
+TEST(db_where_tree, complex_condition) {
+  // eq
+  auto res_eq = where_node_creator<db_operator_t::op_eq>::create(
+      "id", where_table_pair(db_variable_type::type_int, "12"));
+  EXPECT_EQ(res_eq->GetString(),
+            "id" + data2str(db_operator_wrapper(db_operator_t::op_eq)) + "12");
+
+  // not like
+  auto res_nlike = where_node_creator<db_operator_t::op_like>::create(
+      "func", where_table_pair(db_variable_type::type_int, "Regex"), true);
+  EXPECT_STRCASEEQ(res_nlike->GetString().c_str(), "func not like Regex");
+  std::shared_ptr<db_condition_node> root = db_condition_node::AddCondition(
+      db_operator_wrapper(db_operator_t::op_and, false), res_eq, res_nlike);
+  std::string root_str = res_eq->GetString() +
+                         data2str(db_operator_wrapper(db_operator_t::op_and)) +
+                         res_nlike->GetString();
+  EXPECT_STRCASEEQ(root->GetString().c_str(), root_str.c_str());
 }
 
 TEST(db_where_tree, DISABLED_checkDts) {

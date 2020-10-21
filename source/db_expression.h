@@ -203,7 +203,6 @@ struct expression_node {
   }
   void AddLeftNode(const std::shared_ptr<expression_node>& l) { left = l; }
   void AddRightNode(const std::shared_ptr<expression_node>& r) { right = r; }
-
   /**
    * \brief Добавить ещё одно условие к существующему дереву
    *
@@ -230,10 +229,14 @@ struct expression_node {
    *                          / \
    *                         A   B
    * */
-  std::shared_ptr<expression_node> AddCondition(
+  static std::shared_ptr<expression_node> AddCondition(
       const T& op,
+      const std::shared_ptr<expression_node>& left,
       const std::shared_ptr<expression_node>& right) {
-    assert(0);
+    auto root = std::make_shared<expression_node>(op);
+    root->AddLeftNode(left);
+    root->AddRightNode(right);
+    return root;
   }
   /**
    * \brief Проверить наличие подузлов
@@ -311,9 +314,10 @@ struct where_node_creator {
 // todo: why compiler doesn't allow remove full specification in separate file
 template <>
 struct where_node_creator<db_operator_t::op_like> {
-  static std::shared_ptr<db_condition_node> create(const std::string& fname,
-                                                   const std::string& value,
-                                                   bool inverse) {
+  static std::shared_ptr<db_condition_node> create(
+      const std::string& fname,
+      const where_table_pair& value,
+      bool inverse) {
     auto result = std::make_shared<db_condition_node>(
         db_operator_wrapper(db_operator_t::op_like, inverse));
     result->CreateLeftNode(fname);
@@ -326,12 +330,14 @@ template <>
 struct where_node_creator<db_operator_t::op_in> {
   std::shared_ptr<db_condition_node> result;
   where_node_creator(const std::string& fname,
+                     db_variable_type type,
                      const std::vector<std::string>& values,
                      bool inverse) {
     result = std::make_shared<db_condition_node>(
         db_operator_wrapper(db_operator_t::op_in, inverse));
     result->CreateLeftNode(fname);
-    result->CreateRightNode(join_container(values, ',').str());
+    result->CreateRightNode(
+        where_table_pair(type, join_container(values, ',').str()));
   }
 };
 // `between` or `not between`
@@ -339,8 +345,8 @@ template <>
 struct where_node_creator<db_operator_t::op_between> {
   std::shared_ptr<db_condition_node> result;
   where_node_creator(const std::string& fname,
-                     const std::string& left,
-                     const std::string& right,
+                     const where_table_pair& left,
+                     const where_table_pair& right,
                      bool inverse) {
     result = std::make_shared<db_condition_node>(
         db_operator_wrapper(db_operator_t::op_between, inverse));
