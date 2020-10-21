@@ -139,9 +139,10 @@ db_where_tree::db_where_tree(std::shared_ptr<condition_source> source)
     } else if (source_->data.size() > 1) {
       std::generate_n(
           std::back_insert_iterator<
-              std::vector<std::shared_ptr<db_condition_node>>>(source_->data),
+              std::vector<std::shared_ptr<expression_node<where_node_data>>>>(
+              source_->data),
           source_->data.size() - 1, []() {
-            return std::make_shared<db_condition_node>(
+            return std::make_shared<expression_node<where_node_data>>(
                 db_operator_wrapper(db_operator_t::op_and, false));
           });
       construct();

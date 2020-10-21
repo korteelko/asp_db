@@ -222,30 +222,13 @@ struct expression_node {
   void AddLeftNode(const std::shared_ptr<expression_node>& l) { left = l; }
   void AddRightNode(const std::shared_ptr<expression_node>& r) { right = r; }
   /**
-   * \brief Добавить ещё одно условие к существующему дереву
+   * \brief Собрать поддерево из 2 инициализированных поддеревьев и оператора
    *
    * \param op Операция БД, инициализирует новый корень дерева
-   * \param right Указатель на правый(или левый - тут без разницы)
-   *   узел дерева условий
+   * \param left Указатель на левый узел дерева условий
+   * \param right Указатель на правый узел дерева условий
    *
-   * \return Новый указатель на корневой элемент дерева условий
-   *
-   * Example:
-   *   Original tree `Tree`:
-   *                       V
-   *                      / \
-   *   (A ^ B) V C ->    ^   C
-   *                    / \
-   *                   A   B
-   *
-   *  Tree.AddCondition(`V`, D);
-   *                               V
-   *                              / \
-   *   ((A ^ B) V C) V D  ->     V   D
-   *                            / \
-   *                           ^   C
-   *                          / \
-   *                         A   B
+   * \return Указатель на новый узел, собранный по переданным данным
    * */
   static std::shared_ptr<expression_node> AddCondition(
       const T& op,
@@ -297,18 +280,15 @@ std::string expression_node<T>::GetString(DataFieldToStrF dts) const {
     r = right->GetString(dts);
   return l + result + r;
 }
-/**
- * \brief Декларация типа узлов условия для использования в `where_tree`
- * */
-using db_condition_node = expression_node<where_node_data>;
 
 /**
  * \brief Шаблончик на сетап поддеревьев
  *
  * Здесь общий шаблон вида:
  *   `x` operator `X`
+ * \todo Найти более бодходящее имя, с учётом статичной типизации
  * */
-template <db_operator_t op>
+template <class T, db_operator_t op>
 struct where_node_creator {
   /**
    * \brief Создать поддерево оператора, где в корневом узле хранится
@@ -319,34 +299,33 @@ struct where_node_creator {
    * \param value Обёртка над значением поля таблицы БД, содержит
    *   и тип поля, и его строковое представление
    * */
-  static std::shared_ptr<db_condition_node> create(
+  static std::shared_ptr<expression_node<T>> create(
       const std::string& fname,
       const where_table_pair& value) {
     auto result =
-        std::make_shared<db_condition_node>(db_operator_wrapper(op, false));
+        std::make_shared<expression_node<T>>(db_operator_wrapper(op, false));
     result->CreateLeftNode(fname);
     result->CreateRightNode(value);
     return result;
   }
-  static std::shared_ptr<db_condition_node> create(
+  static std::shared_ptr<expression_node<T>> create(
       const std::string& fname,
-      std::shared_ptr<db_condition_node>& cond) {
+      std::shared_ptr<expression_node<T>>& cond) {
     auto result =
-        std::make_shared<db_condition_node>(db_operator_wrapper(op, false));
+        std::make_shared<expression_node<T>>(db_operator_wrapper(op, false));
     result->CreateLeftNode(fname);
     result->AddRightNode(cond);
     return result;
   }
 };
 // `like` or `not like`
-// todo: why compiler doesn't allow remove full specification in separate file
-template <>
-struct where_node_creator<db_operator_t::op_like> {
-  static std::shared_ptr<db_condition_node> create(
+template <class T>
+struct where_node_creator<T, db_operator_t::op_like> {
+  static std::shared_ptr<expression_node<T>> create(
       const std::string& fname,
       const where_table_pair& value,
       bool inverse) {
-    auto result = std::make_shared<db_condition_node>(
+    auto result = std::make_shared<expression_node<T>>(
         db_operator_wrapper(db_operator_t::op_like, inverse));
     result->CreateLeftNode(fname);
     result->CreateRightNode(value);
@@ -354,60 +333,84 @@ struct where_node_creator<db_operator_t::op_like> {
   }
 };
 // `in` or `not in`
-template <>
-struct where_node_creator<db_operator_t::op_in> {
-  std::shared_ptr<db_condition_node> result;
-  where_node_creator(const std::string& fname,
-                     db_variable_type type,
-                     const std::vector<std::string>& values,
-                     bool inverse) {
-    result = std::make_shared<db_condition_node>(
+template <class T>
+struct where_node_creator<T, db_operator_t::op_in> {
+  static std::shared_ptr<expression_node<T>> create(
+      const std::string& fname,
+      db_variable_type type,
+      const std::vector<std::string>& values,
+      bool inverse) {
+    auto result = std::make_shared<expression_node<T>>(
         db_operator_wrapper(db_operator_t::op_in, inverse));
     result->CreateLeftNode(fname);
     result->CreateRightNode(
         where_table_pair(type, join_container(values, ',').str()));
+    return result;
   }
 };
 // `between` or `not between`
-template <>
-struct where_node_creator<db_operator_t::op_between> {
-  std::shared_ptr<db_condition_node> result;
-  where_node_creator(const std::string& fname,
-                     const where_table_pair& left,
-                     const where_table_pair& right,
-                     bool inverse) {
-    result = std::make_shared<db_condition_node>(
+template <class T>
+struct where_node_creator<T, db_operator_t::op_between> {
+  static std::shared_ptr<expression_node<T>> create(
+      const std::string& fname,
+      const where_table_pair& left,
+      const where_table_pair& right,
+      bool inverse) {
+    auto result = std::make_shared<expression_node<T>>(
         db_operator_wrapper(db_operator_t::op_between, inverse));
     result->CreateLeftNode(fname);
     // добавить `and` поддерево с граница `between`
-    auto r = std::make_shared<db_condition_node>(
+    auto r = std::make_shared<expression_node<T>>(
         db_operator_wrapper(db_operator_t::op_and, false));
     r->CreateLeftNode(left);
     r->CreateRightNode(right);
     result->AddRightNode(r);
+    return result;
   }
 };
 
 /**
  * \brief Класс инкапсулирующий функционал сбора выражения WHERE
+ *
+ * Шаблон валиден для типа where_node_data
  * */
 template <class T>
 class DBWhereClause {
  public:
-  DBWhereClause(const T& value) {
-    root = std::make_shared<expression_node<T>>(value);
+  template <db_operator_t _op>
+  static DBWhereClause CreateRoot(const std::string& fname,
+                                  const where_table_pair& value) {
+    auto r = where_node_creator<T, _op>::create(fname, value);
+    return DBWhereClause(r);
   }
   DBWhereClause(std::shared_ptr<expression_node<T>> _root) : root(_root) {}
-
   /**
    * \brief Добавить поддерево условий привязавшись к уже имеющемуся
    *   оператором `_op`
+   *
+   * Example:
+   *   Original tree `Tree`:
+   *                       V
+   *                      / \
+   *   (A ^ B) V C ->    ^   C
+   *                    / \
+   *                   A   B
+   *
+   *  Tree.AddCondition(`V`, D);
+   *                               V
+   *                              / \
+   *   ((A ^ B) V C) V D  ->     V   D
+   *                            / \
+   *                           ^   C
+   *                          / \
+   *                         A   B
    * */
-  mstatus_t AddCondition(db_operator_t _op,
+  mstatus_t AddCondition(db_operator_wrapper _op,
                          std::shared_ptr<expression_node<T>>& condition) {
     mstatus_t ret = STATUS_HAVE_ERROR;
     try {
-      auto r = expression_node<T>::AddCondition(_op, root, condition);
+      auto r = expression_node<T>::AddCondition(where_node_data(_op), root,
+                                                condition);
       root = r;
       ret = STATUS_OK;
     } catch (std::bad_alloc&) {
@@ -423,21 +426,12 @@ class DBWhereClause {
     return ret;
   }
   /**
-   * \brief Добавить поддерево условий привязавшись к уже имеющемуся
-   *   оператором `_op`
-   * */
-  mstatus_t AddCondition(db_operator_t _op, const T& value) {
-    auto r = std::make_shared<expression_node<T>>(value);
-    return AddCondition(_op, r);
-  }
-  /**
    * \brief Влить в текущее дерево другре поддерево DBWhereClause,
    *   разбив их оператором `op`
    * */
   mstatus_t MergeWhereClause(db_operator_t _op, const DBWhereClause& wclause) {
     return AddCondition(_op, wclause.root);
   }
-
   /**
    * \brief Собрать строку условного выражения
    *
@@ -454,7 +448,6 @@ class DBWhereClause {
   }
 
  protected:
-  mstatus_t status_ = STATUS_DEFAULT;
   /**
    * \brief Корень дерева условий
    * */
@@ -476,7 +469,7 @@ class db_where_tree {
    * \brief Контейнер узлов
    * */
   struct condition_source {
-    std::vector<std::shared_ptr<db_condition_node>> data;
+    std::vector<std::shared_ptr<expression_node<where_node_data>>> data;
   };
 
  public:
@@ -512,13 +505,13 @@ class db_where_tree {
   /**
    * \brief Корень дерева условий
    * */
-  db_condition_node* root_ = nullptr;
+  expression_node<where_node_data>* root_ = nullptr;
   /**
    * \brief Результирующая строка собранная из дерева условий
    * */
   std::string data_;
 };
-// #endif  // TO_REMOVE
+//#endif  // TO_REMOVE
 }  // namespace asp_db
 
 #endif  // !_DATABASE__DB_EXPRESSION_H_
