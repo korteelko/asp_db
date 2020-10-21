@@ -157,27 +157,38 @@ size_t db_query_insert_setup::RowsSize() const {
   return values_vec.size();
 }
 
-std::unique_ptr<db_where_tree> db_query_insert_setup::InitWhereTree() {
+std::shared_ptr<DBWhereClause<where_node_data>>
+db_query_insert_setup::InitInsertTree() {
   if (values_vec.empty())
     return nullptr;
-  assert(0);
-  // std::unique_ptr<db_where_tree> wt(new db_where_tree());
-  // std::shared_ptr<db_where_tree::condition_source> source(
-  //    new db_where_tree::condition_source);
+  std::shared_ptr<DBWhereClause<where_node_data>> clause = nullptr;
+  std::vector<std::shared_ptr<expression_node<where_node_data>>> source;
+  source.reserve(values_vec[0].size());
   auto& row = values_vec[0];
   for (const auto& x : row) {
+    // инициализировать все 3х элементные поддеревья типа
+    //             EQ
+    //            /  \       -->   `$fname EQ $value`
+    //        fname  value
+    // и записать их в контейнер
     auto i = x.first;
     if (i != db_query_basesetup::field_index_end && i < fields.size()) {
       auto& f = fields[i];
-      assert(0);
-      // source->data.push_back(std::make_shared<db_condition_node>(
-      //    where_node_data(f.type, std::string(f.fname), x.second)));
+      auto node =
+          where_node_creator<where_node_data, db_operator_t::op_eq>::create(
+              std::string(f.fname), where_table_pair(f.type, x.second));
+      if (node.get())
+        source.push_back(node);
     }
   }
-  assert(0);
-  // std::unique_ptr<db_where_tree> wt =
-  // std::make_unique<db_where_tree>(source); return wt;
-  return nullptr;
+  if (source.size()) {
+    // соединить все 3х элементные поддеревья оператором AND в одно большое
+    // дерево
+    clause = std::make_shared<DBWhereClause<where_node_data>>(source[0]);
+    for (auto it = source.begin() + 1; it != source.end(); ++it)
+      clause->AddCondition(db_operator_wrapper(db_operator_t::op_and), *it);
+  }
+  return clause;
 }
 
 /* db_table_select_setup */

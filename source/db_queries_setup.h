@@ -183,10 +183,10 @@ struct db_query_insert_setup : public db_query_basesetup {
 
   size_t RowsSize() const;
   /**
-   * \brief Функция собирающая обычное дерево where условий
+   * \brief Функция собирающая обычное дерево условий `a` = 'A',
    *   разнесённых операторами AND
    * */
-  std::unique_ptr<db_where_tree> InitWhereTree();
+  std::shared_ptr<DBWhereClause<where_node_data>> InitInsertTree();
 
  public:
   /**
@@ -221,7 +221,7 @@ struct db_query_select_setup : public db_query_basesetup {
   /**
    * \brief Сетап выражения where для SELECT/UPDATE/DELETE запросов
    * */
-  std::unique_ptr<class db_where_tree> where_condition;
+  std::shared_ptr<DBWhereClause<where_node_data>> where_condition;
 
  protected:
   db_query_select_setup(db_table _table, const db_fields_collection& _fields);

@@ -128,7 +128,7 @@ bool where_node_data::IsFieldName() const {
   return ntype == ndata_type::field_name;
 }
 
-//#ifdef TO_REMOVE
+#ifdef TO_REMOVE
 /* db_where_tree */
 db_where_tree::db_where_tree(std::shared_ptr<condition_source> source)
     : source_(source), root_(nullptr) {
@@ -178,6 +178,5 @@ void db_where_tree::construct() {
   root_ = st.top().get();
   status_ = STATUS_OK;*/
 }
-//#endif  // TO_REMOVE
-
+#endif  // TO_REMOVE
 }  // namespace asp_db

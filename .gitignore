@@ -3,6 +3,7 @@ docs/
 lib/asp_db
 out/
 soft/
+tests/html
 
 .ccls-cache/
 .vs/

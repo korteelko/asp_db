@@ -170,9 +170,10 @@ class IDBTables {
    *   insert операции
    * */
   template <class TableI>
-  std::unique_ptr<db_where_tree> InitWhereTree(const TableI& where) const {
+  std::shared_ptr<DBWhereClause<where_node_data>> InitInsertTree(
+      const TableI& where) const {
     auto is = InitInsertSetup<TableI>({where});
-    return (is.get() != nullptr) ? is->InitWhereTree() : nullptr;
+    return (is.get() != nullptr) ? is->InitInsertTree() : nullptr;
   }
 
  protected:

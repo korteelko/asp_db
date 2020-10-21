@@ -454,7 +454,7 @@ class DBWhereClause {
   std::shared_ptr<expression_node<T>> root;
 };
 
-//#ifdef TO_REMOVE
+#ifdef TO_REMOVE
 /**
  * \brief Дерево where условий
  * \note В общем и целом:
@@ -511,7 +511,7 @@ class db_where_tree {
    * */
   std::string data_;
 };
-//#endif  // TO_REMOVE
+#endif  // TO_REMOVE
 }  // namespace asp_db
 
 #endif  // !_DATABASE__DB_EXPRESSION_H_
