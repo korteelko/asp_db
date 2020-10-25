@@ -5,6 +5,7 @@
 #include "db_append_functor.h"
 #include "db_expression.h"
 
+using namespace asp_db::where_nodes_setup;
 using namespace asp_db;
 
 /* контейнеры */
@@ -50,6 +51,16 @@ struct csi {
 
 class AspDBExpressionTest : public ::testing::Test {
  protected:
+};
+
+static const db_fields_collection variables = {
+    db_variable(1,
+                "one",
+                db_variable_type::type_autoinc,
+                {.is_primary_key = true, .can_be_null = false}),
+    db_variable(2, "two", db_variable_type::type_text, {.can_be_null = false}),
+    db_variable(3, "three", db_variable_type::type_int, {.can_be_null = false}),
+    db_variable(4, "four", db_variable_type::type_date, {.can_be_null = false}),
 };
 
 /**
@@ -252,20 +263,43 @@ TEST(db_where, complex_condition) {
   EXPECT_STRCASEEQ(root->GetString().c_str(), root_str.c_str());
 }
 
-std::string test_dts(db_variable_type t, const std::string& v) {
-  std::string res = "";
-  if (t == db_variable_type::type_int) {
-    auto i = std::atoi(v.c_str());
-    res = std::to_string(i + 2);
-  } else if (t == db_variable_type::type_empty) {
-    res = "empty";
-  } else if (t == db_variable_type::type_text) {
-    res = "'" + v + "'";
-  }
-  return res;
+TEST(db_where, node_api) {
+  /* `between` and `eq` */
+  auto nd_and1 = node_and(node_between(variables[0], "0", "3"),
+                          node_eq(variables[3], "ololo"));
+  std::string nd_and1_str = std::string("(") + variables[0].fname +
+                            data2str(db_operator_t::op_between) + "0 and 3)" +
+                            data2str(db_operator_t::op_and) + "(" +
+                            variables[3].fname +
+                            data2str(db_operator_t::op_eq) + "ololo)";
+  EXPECT_STRCASEEQ(nd_and1->GetString().c_str(), nd_and1_str.c_str());
+
+  /* `not like` and `eq` and 'gt' */
+  auto nd_and2 =
+      node_and(node_like(variables[1], "billy", true),
+               node_eq(variables[3], "ololo"), node_gt(variables[0], "3"));
+  std::string nd_and2_str =
+      std::string("((") + variables[1].fname +
+      data2str({db_operator_t::op_like, true}) + "'billy')" +
+      data2str(db_operator_t::op_and) + "(" + variables[3].fname +
+      data2str(db_operator_t::op_eq) + "ololo))" +
+      data2str(db_operator_t::op_and) + "(" + variables[0].fname +
+      data2str(db_operator_t::op_gt) + "3)";
+  EXPECT_STRCASEEQ(nd_and2->GetString().c_str(), nd_and2_str.c_str());
+
+  /* (`in` and `eq`) or 'gt' */
+  /* auto nd_and_or = node_or(
+        node_and(node_in(variables[1], {"abc", "one"}), node_eq(variables[3],
+  "olo")), node_ne(variables[0], "one")); std::string nd_and_or_str =
+  std::string("(") + variables[1].fname
+      + data2str({db_operator_t::op_in})
+      + "(abc, one)" + data2str(db_operator_t::op_and) + variables[3].fname
+      + data2str(db_operator_t::op_eq) + "olo)" + data2str(db_operator_t::op_or)
+      + "(" + variables[0].fname + data2str(db_operator_t::op_ne) + "one)";
+  EXPECT_STRCASEEQ(nd_and_or->GetString().c_str(), nd_and_or_str.c_str()); */
 }
 
-TEST(db_where, checkDts) {
+TEST(db_where, AddCondition) {
   auto res_eq =
       where_node_creator<where_node_data, db_operator_t::op_eq>::create(
           "ob", where_table_pair(db_variable_type::type_int, "4"));
@@ -281,6 +315,19 @@ TEST(db_where, checkDts) {
   EXPECT_STRCASEEQ(root->GetString().c_str(), root_str.c_str());
 }
 
+std::string test_dts(db_variable_type t, const std::string& v) {
+  std::string res = "";
+  if (t == db_variable_type::type_int) {
+    auto i = std::atoi(v.c_str());
+    res = std::to_string(i + 2);
+  } else if (t == db_variable_type::type_empty) {
+    res = "empty";
+  } else if (t == db_variable_type::type_text) {
+    res = "'" + v + "'";
+  }
+  return res;
+}
+
 TEST(DBWhereClause, InitWhereClause) {
   auto w = DBWhereClause<where_node_data>::CreateRoot<db_operator_t::op_eq>(
       "fname", where_table_pair(db_variable_type::type_text, "hello world!"));
@@ -289,8 +336,8 @@ TEST(DBWhereClause, InitWhereClause) {
           "obo", where_table_pair(db_variable_type::type_int, "4"));
 
   w.AddCondition(db_operator_wrapper(db_operator_t::op_and, false), res_is);
-  std::string wstr = "fname" + data2str(db_operator_t::op_eq) +
-                     "'hello world!'" + data2str(db_operator_t::op_and) +
-                     "obo" + data2str(db_operator_t::op_lt) + "4";
+  std::string wstr = "(fname" + data2str(db_operator_t::op_eq) +
+                     "'hello world!')" + data2str(db_operator_t::op_and) +
+                     "(obo" + data2str(db_operator_t::op_lt) + "4)";
   EXPECT_STRCASEEQ(w.GetString().c_str(), wstr.c_str());
 }

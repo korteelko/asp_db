@@ -33,9 +33,9 @@ std::string data2str(db_operator_wrapper op) {
     /*case db_operator_t::op_not:
       result = " IS NOT ";
       break;*/
-    case db_operator_t::op_in:
+    /*case db_operator_t::op_in:
       result = result + " IN ";
-      break;
+      break;*/
     case db_operator_t::op_like:
       result = result + " LIKE ";
       break;
@@ -113,11 +113,23 @@ where_table_pair where_node_data::GetTablePair() const {
     return std::get<db_table_pair>(data);
   } catch (std::bad_variant_access&) {
     Logging::Append(io_loglvl::info_logs,
-                    "Ошибка приведения типа для "
-                    "узла условий where. Функция вернёт NullObject\n" +
+                    "Ошибка приведения типа для узла условий where. "
+                    "Функция GetTablePair вернёт NullObject\n" +
                         STRING_DEBUG_INFO);
   }
   return db_table_pair(db_variable_type::type_empty, "");
+}
+
+db_operator_wrapper where_node_data::GetOperatorWrapper() const {
+  try {
+    return std::get<db_operator_wrapper>(data);
+  } catch (std::bad_variant_access&) {
+    Logging::Append(io_loglvl::info_logs,
+                    "Ошибка приведения типа для узла условий where. "
+                    "Функция GetOperatorWrapper вернёт NullObject\n" +
+                        STRING_DEBUG_INFO);
+  }
+  return db_operator_wrapper(db_operator_t::op_empty);
 }
 
 bool where_node_data::IsOperator() const {
@@ -128,55 +140,91 @@ bool where_node_data::IsFieldName() const {
   return ntype == ndata_type::field_name;
 }
 
-#ifdef TO_REMOVE
-/* db_where_tree */
-db_where_tree::db_where_tree(std::shared_ptr<condition_source> source)
-    : source_(source), root_(nullptr) {
-  if (source_.get() != nullptr) {
-    if (source_->data.size() == 1) {
-      // только одно условие выборки
-      root_ = source_->data[0].get();
-    } else if (source_->data.size() > 1) {
-      std::generate_n(
-          std::back_insert_iterator<
-              std::vector<std::shared_ptr<expression_node<where_node_data>>>>(
-              source_->data),
-          source_->data.size() - 1, []() {
-            return std::make_shared<expression_node<where_node_data>>(
-                db_operator_wrapper(db_operator_t::op_and, false));
-          });
-      construct();
-    }
-  }
-}
-
-std::string db_where_tree::GetString(DataFieldToStrF dts) const {
-  /*if (root_) {
-    for_each(source_->data.begin(), source_->data.end(),
-             [](auto c) { c->visited = false; });
-    return root_->GetString(dts);
-  }*/
-  return "";
-}
-
-void db_where_tree::construct() {
-  /*
-  std::stack<std::shared_ptr<db_condition_node>> st;
-  for (auto nd = source_->data.begin(); nd != source_->data.end(); ++nd) {
-    if ((*nd)->IsOperator()) {
-      auto top1 = st.top();
-      st.pop();
-      auto top2 = st.top();
-      st.pop();
-      (*nd)->rigth = top1.get();
-      (*nd)->left = top2.get();
-      st.push(*nd);
+template <>
+std::string expression_node<where_node_data>::GetString(
+    DataFieldToStrF dts) const {
+  std::string l, r;
+  std::string result;
+  bool braced = false;
+  if (field_data.IsFieldName()) {
+    result = field_data.GetString();
+  } else if (field_data.IsOperator()) {
+    result = field_data.GetString();
+    braced = true;
+    if (!parent) {
+      // рут ноду не нужно обрамлять скобками
+      braced = false;
     } else {
-      st.push(*nd);
+      auto parent_op = parent->field_data.GetOperatorWrapper();
+      // for beetween,
+      // ООООООООООООО,  сюда и про `in` запихать
+      if (parent_op.op == db_operator_t::op_between)
+        // в `beetween -> x and y` скобками обрамлять `x and y` не надо
+        braced = false;
     }
+  } else {
+    auto p = field_data.GetTablePair();
+    result = dts(p.first, p.second);
   }
-  root_ = st.top().get();
-  status_ = STATUS_OK;*/
+  if (left.get())
+    l = left->GetString(dts);
+  if (right.get())
+    r = right->GetString(dts);
+  return (braced) ? "(" + l + result + r + ")" : l + result + r;
 }
-#endif  // TO_REMOVE
+
+namespace where_nodes_setup {
+node_ptr node_eq(const db_variable& var, const std::string& value) {
+  return leaf_node_access(eq);
+}
+
+node_ptr node_is(const db_variable& var, const std::string& value) {
+  return leaf_node_access(is);
+}
+
+node_ptr node_ne(const db_variable& var, const std::string& value) {
+  return leaf_node_access(ne);
+}
+
+node_ptr node_ge(const db_variable& var, const std::string& value) {
+  return leaf_node_access(ge);
+}
+
+node_ptr node_gt(const db_variable& var, const std::string& value) {
+  return leaf_node_access(gt);
+}
+
+node_ptr node_le(const db_variable& var, const std::string& value) {
+  return leaf_node_access(le);
+}
+
+node_ptr node_lt(const db_variable& var, const std::string& value) {
+  return leaf_node_access(lt);
+}
+
+node_ptr node_like(const db_variable& var,
+                   const std::string& value,
+                   bool inverse) {
+  return where_node_creator<where_node_data, db_operator_t::op_like>::create(
+      var.fname, where_table_pair(var.type, value), inverse);
+}
+
+node_ptr node_between(const db_variable& var,
+                      const std::string& min,
+                      const std::string& max,
+                      bool inverse) {
+  return where_node_creator<where_node_data, db_operator_t::op_between>::create(
+      var.fname, where_table_pair(var.type, min),
+      where_table_pair(var.type, max), inverse);
+}
+
+node_ptr node_and(const node_ptr& left, const node_ptr& right) {
+  return inner_node_access(and);
+}
+
+node_ptr node_or(const node_ptr& left, const node_ptr& right) {
+  return inner_node_access(or);
+}
+
+}  // namespace where_nodes_setup
 }  // namespace asp_db

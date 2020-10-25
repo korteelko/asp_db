@@ -128,7 +128,7 @@ merror_t db_reference::CheckYourself() const {
   return error;
 }
 
-/* this is for postgresql, what about anothers? */
+/* todo: replace std::exception */
 std::string db_reference::GetReferenceActString(db_reference_act act) {
   switch (act) {
     case db_reference_act::ref_act_not:

@@ -345,7 +345,11 @@ struct db_reference {
   /** \brief Проверить несовместимы ли флаги и другие параметры */
   merror_t CheckYourself() const;
 
-  /** \brief Получить строковое представление update|delete action */
+  /**
+   * \brief Получить строковое представление update|delete action
+   *
+   * \throw std::exception (look todo)
+   * */
   static std::string GetReferenceActString(db_reference_act act);
 };
 

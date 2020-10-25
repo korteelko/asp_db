@@ -54,8 +54,11 @@ enum class db_operator_t {
    * Попробуем задавать флагом инвертирования
    * */
   // op_not,
-  /** \brief оператор поиска в листе */
-  op_in,
+  /**
+   * \brief оператор поиска в листе
+   * \note Добавление этого функционала вынесено в отдельную задачу
+   * */
+  // op_in,
   /** \brief оператор поиска в коллекции */
   op_like,
   /** \brief выборка по границам */
@@ -166,6 +169,7 @@ struct where_node_data {
    * \brief Создать ноду с данными имени столбца
    * */
   where_node_data(const std::string& fname);
+
   /**
    * \brief Получить строковое представление данных
    * */
@@ -174,6 +178,10 @@ struct where_node_data {
    * \brief Получить данные пары
    * */
   db_table_pair GetTablePair() const;
+  /**
+   * \brief Получить объект-обёртку над оператором
+   * */
+  db_operator_wrapper GetOperatorWrapper() const;
   /**
    * \brief Проверить тип хранимых данных `db_operator_t`
    *
@@ -211,16 +219,25 @@ struct expression_node {
   T field_data;
 
  public:
-  expression_node(const T& data) : field_data(data) {}
+  expression_node(expression_node* parent, const T& data)
+      : field_data(data), parent(parent) {}
+
+  virtual ~expression_node() = default;
 
   void CreateLeftNode(const T& l) {
-    left = std::make_shared<expression_node>(l);
+    left = std::make_shared<expression_node>(this, l);
   }
   void CreateRightNode(const T& r) {
-    right = std::make_shared<expression_node>(r);
+    right = std::make_shared<expression_node>(this, r);
   }
-  void AddLeftNode(const std::shared_ptr<expression_node>& l) { left = l; }
-  void AddRightNode(const std::shared_ptr<expression_node>& r) { right = r; }
+  void AddLeftNode(const std::shared_ptr<expression_node>& l) {
+    left = l;
+    left->parent = this;
+  }
+  void AddRightNode(const std::shared_ptr<expression_node>& r) {
+    right = r;
+    right->parent = this;
+  }
   /**
    * \brief Собрать поддерево из 2 инициализированных поддеревьев и оператора
    *
@@ -234,7 +251,7 @@ struct expression_node {
       const T& op,
       const std::shared_ptr<expression_node>& left,
       const std::shared_ptr<expression_node>& right) {
-    auto root = std::make_shared<expression_node>(op);
+    auto root = std::make_shared<expression_node>(nullptr, op);
     root->AddLeftNode(left);
     root->AddRightNode(right);
     return root;
@@ -258,6 +275,7 @@ struct expression_node {
   std::shared_ptr<expression_node> GetRight() const { return right; }
 
  protected:
+  expression_node* parent = nullptr;
   std::shared_ptr<expression_node> left = nullptr;
   std::shared_ptr<expression_node> right = nullptr;
 };
@@ -268,7 +286,7 @@ template <class T>
 std::string expression_node<T>::GetString(DataFieldToStrF dts) const {
   std::string l, r;
   std::string result;
-  if (field_data.IsOperator() || field_data.IsFieldName()) {
+  if (field_data.IsFieldName() || field_data.IsOperator()) {
     result = field_data.GetString();
   } else {
     auto p = field_data.GetTablePair();
@@ -280,7 +298,14 @@ std::string expression_node<T>::GetString(DataFieldToStrF dts) const {
     r = right->GetString(dts);
   return l + result + r;
 }
-
+/**
+ * \brief Собрать строку поддерева
+ *
+ * \note Такие перегрузки разрешены?
+ * */
+template <>
+std::string expression_node<where_node_data>::GetString(
+    DataFieldToStrF dts) const;
 /**
  * \brief Шаблончик на сетап поддеревьев
  *
@@ -302,8 +327,8 @@ struct where_node_creator {
   static std::shared_ptr<expression_node<T>> create(
       const std::string& fname,
       const where_table_pair& value) {
-    auto result =
-        std::make_shared<expression_node<T>>(db_operator_wrapper(op, false));
+    auto result = std::make_shared<expression_node<T>>(
+        nullptr, db_operator_wrapper(op, false));
     result->CreateLeftNode(fname);
     result->CreateRightNode(value);
     return result;
@@ -311,8 +336,8 @@ struct where_node_creator {
   static std::shared_ptr<expression_node<T>> create(
       const std::string& fname,
       std::shared_ptr<expression_node<T>>& cond) {
-    auto result =
-        std::make_shared<expression_node<T>>(db_operator_wrapper(op, false));
+    auto result = std::make_shared<expression_node<T>>(
+        nullptr, db_operator_wrapper(op, false));
     result->CreateLeftNode(fname);
     result->AddRightNode(cond);
     return result;
@@ -326,13 +351,14 @@ struct where_node_creator<T, db_operator_t::op_like> {
       const where_table_pair& value,
       bool inverse) {
     auto result = std::make_shared<expression_node<T>>(
-        db_operator_wrapper(db_operator_t::op_like, inverse));
+        nullptr, db_operator_wrapper(db_operator_t::op_like, inverse));
     result->CreateLeftNode(fname);
     result->CreateRightNode(value);
     return result;
   }
 };
 // `in` or `not in`
+/*
 template <class T>
 struct where_node_creator<T, db_operator_t::op_in> {
   static std::shared_ptr<expression_node<T>> create(
@@ -340,14 +366,17 @@ struct where_node_creator<T, db_operator_t::op_in> {
       db_variable_type type,
       const std::vector<std::string>& values,
       bool inverse) {
-    auto result = std::make_shared<expression_node<T>>(
+    auto result = std::make_shared<expression_node<T>>(nullptr,
         db_operator_wrapper(db_operator_t::op_in, inverse));
     result->CreateLeftNode(fname);
-    result->CreateRightNode(
-        where_table_pair(type, join_container(values, ',').str()));
-    return result;
+    auto values_str = db_variable::TranslateFromVector(values.begin(),
+values.end()); result->CreateRightNode(where_table_pair(type, values_str));
+    //result->CreateRightNode(
+    //    where_table_pair(type, "(" + join_container(values, ',').str() +
+")")); return result;
   }
 };
+*/
 // `between` or `not between`
 template <class T>
 struct where_node_creator<T, db_operator_t::op_between> {
@@ -357,11 +386,11 @@ struct where_node_creator<T, db_operator_t::op_between> {
       const where_table_pair& right,
       bool inverse) {
     auto result = std::make_shared<expression_node<T>>(
-        db_operator_wrapper(db_operator_t::op_between, inverse));
+        nullptr, db_operator_wrapper(db_operator_t::op_between, inverse));
     result->CreateLeftNode(fname);
     // добавить `and` поддерево с граница `between`
     auto r = std::make_shared<expression_node<T>>(
-        db_operator_wrapper(db_operator_t::op_and, false));
+        nullptr, db_operator_wrapper(db_operator_t::op_and, false));
     r->CreateLeftNode(left);
     r->CreateRightNode(right);
     result->AddRightNode(r);
@@ -454,64 +483,69 @@ class DBWhereClause {
   std::shared_ptr<expression_node<T>> root;
 };
 
-#ifdef TO_REMOVE
+/* todo: нейминг уровня \b */
 /**
- * \brief Дерево where условий
- * \note В общем и целом:
- *   1) не очень оптимизировано
- *   2) строки которая хочет видеть СУБД могут отличаться от того что
- *     представлено в коде, поэтому оставим возможность их менять
- * \todo Переделать это всё
+ * \brief Пространство имён создания деревьев условных выражений
+ *   для составления where подстрок запросов
  * */
-class db_where_tree {
- public:
-  /**
-   * \brief Контейнер узлов
-   * */
-  struct condition_source {
-    std::vector<std::shared_ptr<expression_node<where_node_data>>> data;
-  };
+namespace where_nodes_setup {
+typedef std::shared_ptr<expression_node<where_node_data>> node_ptr;
+/**
+ * \brief Макрос регистрирующий функцию инициализации узлов дерева запросов
+ *
+ * Шаблоные функции `where_node_creator` портят читаемость кода, и пусть они
+ * останутся на уровень абстракции пониже
+ * */
+#define leaf_node_access(op)                                           \
+  where_node_creator<where_node_data, db_operator_t::op_##op>::create( \
+      var.fname, where_table_pair(var.type, value));
+/**
+ * \brief Макрос регистрирующий функцию инициализацию внутреннего узла
+ *   дерева запросов
+ * */
+#define inner_node_access(op)                     \
+  expression_node<where_node_data>::AddCondition( \
+      where_node_data(db_operator_t::op_##op), left, right);
 
- public:
-  db_where_tree(std::shared_ptr<condition_source> source);
+/* leaf nodes */
+/*  simple operators */
+node_ptr node_eq(const db_variable& var, const std::string& value);
+node_ptr node_is(const db_variable& var, const std::string& value);
+node_ptr node_ne(const db_variable& var, const std::string& value);
+node_ptr node_ge(const db_variable& var, const std::string& value);
+node_ptr node_gt(const db_variable& var, const std::string& value);
+node_ptr node_le(const db_variable& var, const std::string& value);
+node_ptr node_lt(const db_variable& var, const std::string& value);
+/*  special operators */
+node_ptr node_like(const db_variable& var,
+                   const std::string& value,
+                   bool inverse = false);
+/*node_ptr node_in(const db_variable &var,
+                 const std::vector<std::string> &values,
+                 bool inverse) {
+  return where_node_creator<where_node_data, db_operator_t::op_in>::create(
+        var.fname,
+        var.type,
+        values,
+        inverse);
+}*/
+node_ptr node_between(const db_variable& var,
+                      const std::string& min,
+                      const std::string& max,
+                      bool inverse = false);
 
-  // todo: мэйби открыть???
-  db_where_tree(const db_where_tree&) = delete;
-  db_where_tree(db_where_tree&&) = delete;
-  db_where_tree& operator=(const db_where_tree&) = delete;
-  db_where_tree& operator=(db_where_tree&&) = delete;
-
-  /**
-   * \brief Собрать строку условного выражения
-   * */
-  std::string GetString(DataFieldToStrF dts = DataFieldToStr) const;
-
- protected:
-  /**
-   * \brief Собрать дерево условий по вектору узлов условий source_.data
-   * \note Разбивает дерево как простое выражение с ОДНОРАНГОВЫМИ операциями,
-   *   т.е. например `x AND y OR z` в каком порядке поступило, так и
-   *   распарсится.
-   * \todo Допустим ли такой подход для разных типов операций???
-   * */
-  void construct();
-
- protected:
-  mstatus_t status_ = STATUS_DEFAULT;
-  /**
-   * \brief Контейнер-хранилище узлов условий
-   * */
-  std::shared_ptr<condition_source> source_;
-  /**
-   * \brief Корень дерева условий
-   * */
-  expression_node<where_node_data>* root_ = nullptr;
-  /**
-   * \brief Результирующая строка собранная из дерева условий
-   * */
-  std::string data_;
-};
-#endif  // TO_REMOVE
+/* inner nodes */
+node_ptr node_and(const node_ptr& left, const node_ptr& right);
+node_ptr node_or(const node_ptr& left, const node_ptr& right);
+template <class... Tand>
+node_ptr node_and(const node_ptr& left, const node_ptr& right, Tand... _and) {
+  return node_and(node_and(left, right), _and...);
+}
+template <class... Tor>
+node_ptr node_or(const node_ptr& left, const node_ptr& right, Tor... _or) {
+  return node_or(node_or(left, right), _or...);
+}
+}  // namespace where_nodes_setup
 }  // namespace asp_db
 
 #endif  // !_DATABASE__DB_EXPRESSION_H_
