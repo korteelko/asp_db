@@ -19,6 +19,8 @@
 #include "ThreadWrap.h"
 #include "db_connection.h"
 #include "db_defines.h"
+#include "db_queries_setup.h"
+#include "db_queries_setup_select.h"
 #include "db_query.h"
 #include "db_tables.h"
 
@@ -86,26 +88,44 @@ class DBException : public std::exception {
   DBException(merror_t error, const std::string& msg);
   DBException(const std::string& msg);
 
+  const char* what() const noexcept;
+
   /* build options */
-  /** \brief Добавить к исключению информацию о таблице */
+  /**
+   * \brief Добавить к исключению информацию о таблице
+   * */
   DBException& AddTableCode(db_table table);
 
-  /** \brief Залогировать ошибку */
+  /**
+   * \brief Залогировать ошибку
+   * */
   void LogException();
-  /** \brief Получить код ошибки */
+  /**
+   * \brief Получить код ошибки
+   * */
   merror_t GetError() const;
-  /** \brief Получить сообщение об ошибке */
+  /**
+   * \brief Получить сообщение об ошибке
+   * */
   std::string GetErrorMessage() const;
 
  private:
-  /** \brief Ошибка, сюда же пишется сообщение */
+  /**
+   * \brief Ошибка, сюда же пишется сообщение
+   * */
   ErrorWrap error_;
-  /** \brief Тип таблицы */
+  /**
+   * \brief Код таблицы
+   * */
   db_table table_ = UNDEFINED_TABLE;
 };
 
-/** \brief Класс взаимодействия с БД, предоставляет API
- *   на все допустимые операции */
+/**
+ * \brief Класс взаимодействия с БД, предоставляет API
+ *   на все допустимые операции
+ *
+ * В целом класс представляет собой фасад на подключение к БД
+ * */
 class DBConnectionManager {
  public:
   DBConnectionManager(const IDBTables* tables);
@@ -227,6 +247,19 @@ class DBConnectionManager {
   /** \brief Обновить формат таблицы */
   mstatus_t UpdateTableFormat(db_table dt);
 
+  /**
+   * \brief Удалить строки таблицы соответствующие инициализированным
+   *   в аргументе метода - объекте where
+   * \tparam TableI C++ структура-обвязка над таблицой БД
+   * \param where Структура с инициализированными полями
+   *
+   * Метод собирает where выражение вида
+   *   `FIELD_NAME(where.a) EQ "to_str(where.a)" AND
+   *       FIELD_NAME(where.b) EQ "to_str(where.b)" ...`,
+   * где where.a и where.b - поля структуры where,
+   * FIELD_NAME(x) - функция получения соответсвующего `x`
+   *     имени поля в таблице БД.
+   * */
   template <class TableI>
   mstatus_t DeleteRows(TableI& where) {
     std::unique_ptr<db_query_delete_setup> dds(
@@ -242,10 +275,8 @@ class DBConnectionManager {
   /** \brief Удалить строки */
   // mstatus_t DeleteModelInfo(model_info &where);
 
-  /* rename method to GetError */
-  merror_t GetErrorCode();
   mstatus_t GetStatus();
-  /* remove this(GetErrorMessage), add LogIt */
+  merror_t GetError();
   std::string GetErrorMessage();
 
  private:

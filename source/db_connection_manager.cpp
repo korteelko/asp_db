@@ -67,6 +67,10 @@ DBException::DBException(merror_t error, const std::string& msg)
 DBException::DBException(const std::string& msg)
     : DBException(ERROR_GENERAL_T, msg) {}
 
+const char* DBException::what() const noexcept {
+  return error_.GetMessagePtr();
+}
+
 DBException& DBException::AddTableCode(db_table table) {
   table_ = table;
   return *this;
@@ -187,7 +191,7 @@ tables_->GetTableCode<model_info>())); if (dds)
 }
 */
 
-merror_t DBConnectionManager::GetErrorCode() {
+merror_t DBConnectionManager::GetError() {
   return error_.GetErrorCode();
 }
 
