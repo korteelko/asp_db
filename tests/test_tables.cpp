@@ -30,8 +30,8 @@ class DatabaseTablesTest : public ::testing::Test {
     db_par.host = "127.0.0.1";
     db_par.port = 5432;
     EXPECT_TRUE(is_status_aval(dbm_.ResetConnectionParameters(db_par)));
-    if (dbm_.GetErrorCode()) {
-      std::cerr << dbm_.GetErrorCode();
+    if (dbm_.GetError()) {
+      std::cerr << dbm_.GetError();
       EXPECT_TRUE(false);
     }
   }
@@ -46,7 +46,7 @@ class DatabaseTablesTest : public ::testing::Test {
 };
 
 TEST_F(DatabaseTablesTest, TableExists) {
-  ASSERT_TRUE(dbm_.GetErrorCode() == ERROR_SUCCESS_T);
+  ASSERT_TRUE(dbm_.GetError() == ERROR_SUCCESS_T);
   std::vector<db_table> tables{table_book, table_translation, table_author};
   for (const auto& x : tables) {
     if (!dbm_.IsTableExists(x)) {

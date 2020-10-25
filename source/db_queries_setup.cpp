@@ -190,26 +190,4 @@ db_query_insert_setup::InitInsertTree() {
   }
   return clause;
 }
-
-/* db_table_select_setup */
-db_query_select_setup* db_query_select_setup::Init(const IDBTables* tables,
-                                                   db_table _table) {
-  return new db_query_select_setup(_table,
-                                   *tables->GetFieldsCollection(_table));
-}
-
-db_query_select_setup::db_query_select_setup(
-    db_table _table,
-    const db_fields_collection& _fields)
-    : db_query_basesetup(_table, _fields) {}
-
-db_query_update_setup::db_query_update_setup(
-    db_table _table,
-    const db_fields_collection& _fields)
-    : db_query_select_setup(_table, _fields) {}
-
-/* db_table_select_result */
-db_query_select_result::db_query_select_result(
-    const db_query_select_setup& setup)
-    : db_query_basesetup(setup) {}
 }  // namespace asp_db

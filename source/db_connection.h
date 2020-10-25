@@ -20,6 +20,7 @@
 #include "Logging.h"
 #include "db_defines.h"
 #include "db_queries_setup.h"
+#include "db_queries_setup_select.h"
 #include "db_query.h"
 #include "db_tables.h"
 
