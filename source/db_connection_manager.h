@@ -142,111 +142,36 @@ class DBConnectionManager {
   /* insert operations */
   /** \brief Сохранить в БД строку */
   template <class TableI>
-  mstatus_t SaveSingleRow(TableI& ti, int* id_p = nullptr) {
-    std::unique_ptr<db_query_insert_setup> dis(
-        tables_->InitInsertSetup<TableI>({ti}));
-    db_save_point sp("save_" + tables_->GetTableName<TableI>());
-    id_container id_vec;
-    mstatus_t st = exec_wrap<const db_query_insert_setup&, id_container,
-                             void (DBConnectionManager::*)(
-                                 Transaction*, const db_query_insert_setup&,
-                                 id_container*)>(
-        *dis, &id_vec, &DBConnectionManager::saveRows, &sp);
-    if (id_vec.id_vec.size() && id_p)
-      *id_p = id_vec.id_vec[0];
-    return st;
-  }
+  mstatus_t SaveSingleRow(TableI& ti, int* id_p = nullptr);
   /**
    * \brief Сохранить в БД вектор строк.
    * \todo replace with generic container
    * */
   template <class TableI>
   mstatus_t SaveVectorOfRows(const std::vector<TableI>& tis,
-                             id_container* id_vec_p = nullptr) {
-    std::unique_ptr<db_query_insert_setup> dis(
-        tables_->InitInsertSetup<TableI>(tis));
-    mstatus_t st = STATUS_NOT;
-    if (dis.get()) {
-      db_save_point sp("save_" + tables_->GetTableName<TableI>());
-      st = exec_wrap<const db_query_insert_setup&, id_container,
-                     void (DBConnectionManager::*)(Transaction*,
-                                                   const db_query_insert_setup&,
-                                                   id_container*)>(
-          *dis, id_vec_p, &DBConnectionManager::saveRows, &sp);
-    } else {
-      Logging::Append(io_loglvl::warn_logs,
-                      "Ошибка добавления набора строк "
-                      "к БД - не инициализирован сетап добавляемыхх данных");
-    }
-    return st;
-  }
+                             id_container* id_vec_p = nullptr);
   /**
    * \brief Сохранить в БД строки ещё не добавленные.
    * \todo replace with generic container
    * */
   template <class TableI>
   mstatus_t SaveNotExistsRows(const std::vector<TableI>& tis,
-                              id_container* id_vec_p = nullptr) {
-    id_container id_vec;
-    id_vec.id_vec = std::vector<int>(tis.size());
-    size_t exists_num = 0;
-    for (size_t i = 0; i < tis.size(); ++i) {
-      std::vector<TableI> s;
-      id_vec.id_vec[i] = -1;
-      if (is_status_ok(SelectRows(tis[i], &s))) {
-        if (s.size()) {
-          exists_num++;
-          id_vec.id_vec[i] = s[0].id;
-        }
-      }
-    }
-    mstatus_t st = STATUS_DEFAULT;
-    if (exists_num == tis.size()) {
-      // все элементы оказались наместе
-      if (id_vec_p) {
-        id_vec_p->id_vec.swap(id_vec.id_vec);
-        st = id_vec_p->status = STATUS_OK;
-      }
-    } else if (exists_num == 0) {
-      // все элементы новенькие
-      st = SaveVectorOfRows(tis, id_vec_p);
-    } else {
-      // есть но не все
-      std::vector<TableI> tis_ex;
-      for (size_t i = 0; i < tis.size(); ++i)
-        if (id_vec.id_vec[i] == -1)
-          tis_ex.push_back(tis[i]);
-      id_container id_vec_ex;
-      st = SaveVectorOfRows(tis_ex, &id_vec_ex);
-      if (is_status_ok(st)) {
-        auto it_vec_ex = id_vec_ex.id_vec.begin();
-        auto it_vec = std::find_if(id_vec.id_vec.begin(), id_vec.id_vec.end(),
-                                   [](int id) { return id == -1; });
-        while (it_vec_ex != id_vec_ex.id_vec.end() &&
-               it_vec != id_vec.id_vec.end()) {
-          *it_vec = *it_vec_ex;
-          it_vec = std::find_if(it_vec, id_vec.id_vec.end(),
-                                [](int id) { return id == -1; });
-        }
-        id_vec_p->id_vec.swap(id_vec.id_vec);
-        st = id_vec_p->status = STATUS_OK;
-      }
-    }
-    return st;
-  }
-
+                              id_container* id_vec_p = nullptr);
   /* select operations */
   /** \brief Вытащить из БД строки TableI по условиям из 'where' */
   template <class TableI, class ContainerT = std::vector<TableI>>
-  mstatus_t SelectRows(const TableI& where, ContainerT* res) {
-    return selectData(tables_->GetTableCode<TableI>(), where, res);
-  }
-  /* table format */
-  /** \brief Проверить формат таблицы */
-  bool CheckTableFormat(db_table dt);
-  /** \brief Обновить формат таблицы */
-  mstatus_t UpdateTableFormat(db_table dt);
+  mstatus_t SelectRows(const TableI& where, ContainerT* res);
 
+  /* table format */
+  /**
+   * \brief Сравнить заданную в программе конфигурацию
+   *   таблицы с найденной в СУБД
+   * */
+  bool CheckTableFormat(db_table dt);
+  /**
+   * \brief Обновить формат таблицы
+   * */
+  mstatus_t UpdateTableFormat(db_table dt);
   /**
    * \brief Удалить строки таблицы соответствующие инициализированным
    *   в аргументе метода - объекте where
@@ -261,17 +186,7 @@ class DBConnectionManager {
    *     имени поля в таблице БД.
    * */
   template <class TableI>
-  mstatus_t DeleteRows(TableI& where) {
-    std::unique_ptr<db_query_delete_setup> dds(
-        db_query_delete_setup::Init(tables_, tables_->GetTableCode<TableI>()));
-    if (dds)
-      tables_->InitInsertTree<TableI>(where).swap(dds->where_condition);
-    db_save_point sp("delete_rows");
-    return exec_wrap<const db_query_delete_setup&, void,
-                     void (DBConnectionManager::*)(
-                         Transaction*, const db_query_delete_setup&, void*)>(
-        *dds, nullptr, &DBConnectionManager::deleteRows, &sp);
-  }
+  mstatus_t DeleteRows(TableI& where);
   /** \brief Удалить строки */
   // mstatus_t DeleteModelInfo(model_info &where);
 
@@ -280,43 +195,7 @@ class DBConnectionManager {
   std::string GetErrorMessage();
 
  private:
-  /**
-   * \brief Закрытый класс создания соединений с БД
-   * */
-  class DBConnectionCreator {
-    friend class DBConnectionManager;
-    OWNER(DBConnectionManager);
-
-   private:
-    DBConnectionCreator();
-
-    /**
-     * \brief Инициализировать соединение с БД
-     * \param tables Указатель на класс реализующий
-     *   операции с таблицами БД
-     * \param parameters Параметры подключения
-     *
-     * \return Указатель на реализацию подключения или nullptr
-     * */
-    std::unique_ptr<DBConnection> initDBConnection(
-        const IDBTables* tables,
-        const db_parameters& parameters);
-    /**
-     * \brief Создать копию оригинального соединения для
-     *   организации параллельных запросов к БД
-     * \param orig Указатель на оригинал подключения
-     *
-     * \return Указатель на реализацию подключения или nullptr
-     * */
-    static std::shared_ptr<DBConnection> cloneConnection(DBConnection* orig);
-
-   private:
-    /**
-     * \brief Логгер модуля БД
-     * */
-    static PrivateLogging db_logger_;
-  };
-  /* declare short name for DBConnectionCreator  */
+  class DBConnectionCreator;
   typedef DBConnectionManager::DBConnectionCreator ConnectionCreator;
 
  private:
@@ -333,65 +212,17 @@ class DBConnectionManager {
   mstatus_t exec_wrap(DataT data,
                       OutT* res,
                       SetupQueryF setup_m,
-                      db_save_point* sp_ptr) {
-    if (status_ == STATUS_DEFAULT)
-      status_ = CheckConnection();
-    mstatus_t trans_st;
-    if (db_connection_ && is_status_aval(status_)) {
-      auto c = DBConnectionCreator().cloneConnection(db_connection_.get());
-      if (c.get()) {
-        Transaction tr(c.get());
-        tr.AddQuery(QuerySmartPtr(new DBQuerySetupConnection(c.get())));
-        // добавить точку сохранения, если есть необходимость
-        if (sp_ptr)
-          tr.AddQuery(QuerySmartPtr(new DBQueryAddSavePoint(c.get(), *sp_ptr)));
-        // добавить специализированные запросы
-        std::invoke(setup_m, *this, &tr, data, res);
-        tr.AddQuery(QuerySmartPtr(new DBQueryCloseConnection(c.get())));
-        try {
-          trans_st = tryExecuteTransaction(tr);
-        } catch (DBException& e) {
-          e.LogException();
-          trans_st = STATUS_HAVE_ERROR;
-        } catch (std::exception& e) {
-          trans_st = STATUS_HAVE_ERROR;
-          error_.SetError(ERROR_DB_OPERATION, "Нерегламентированная ошибка" +
-                                                  std::string(e.what()));
-        }
-      }
-    } else {
-      error_.SetError(ERROR_DB_CONNECTION,
-                      "Не удалось установить "
-                      "соединение для БД: " +
-                          parameters_.GetInfo());
-      status_ = trans_st = STATUS_HAVE_ERROR;
-    }
-    return trans_st;
-  }
-
-  /** \brief Проинициализировать соединение с БД */
+                      db_save_point* sp_ptr);
+  /**
+   * \brief Проинициализировать соединение с БД
+   * */
   void initDBConnection();
 
-  /** \brief Собрать запрос на выборку данных */
+  /**
+   * \brief Собрать запрос на выборку данных
+   * */
   template <class DataT>
-  mstatus_t selectData(db_table t,
-                       const DataT& where,
-                       std::vector<DataT>* res) {
-    std::unique_ptr<db_query_select_setup> dss(
-        db_query_select_setup::Init(tables_, t));
-    if (dss)
-      tables_->InitInsertTree<DataT>(where).swap(dss->where_condition);
-    db_query_select_result result(*dss);
-    auto st = exec_wrap<const db_query_select_setup&, db_query_select_result,
-                        void (DBConnectionManager::*)(
-                            Transaction*, const db_query_select_setup&,
-                            db_query_select_result*)>(
-        *dss, &result, &DBConnectionManager::selectRows, nullptr);
-    if (is_status_ok(st))
-      tables_->SetSelectData(&result, res);
-    return st;
-  }
-
+  mstatus_t selectData(db_table t, const DataT& where, std::vector<DataT>* res);
   /* добавить в транзакцию соответствующий запрос */
   /** \brief Запрос сушествования таблицы */
   void isTableExist(Transaction* tr, db_table dt, bool* is_exists);
@@ -437,6 +268,207 @@ class DBConnectionManager {
    * */
   std::unique_ptr<DBConnection> db_connection_;
 };
+
+/**
+ * \brief Закрытый класс создания соединений с БД
+ * */
+class DBConnectionManager::DBConnectionCreator {
+  friend class DBConnectionManager;
+  OWNER(DBConnectionManager);
+
+ private:
+  DBConnectionCreator();
+
+  /**
+   * \brief Инициализировать соединение с БД
+   * \param tables Указатель на класс реализующий
+   *   операции с таблицами БД
+   * \param parameters Параметры подключения
+   *
+   * \return Указатель на реализацию подключения или nullptr
+   * */
+  std::unique_ptr<DBConnection> initDBConnection(
+      const IDBTables* tables,
+      const db_parameters& parameters);
+  /**
+   * \brief Создать копию оригинального соединения для
+   *   организации параллельных запросов к БД
+   * \param orig Указатель на оригинал подключения
+   *
+   * \return Указатель на реализацию подключения или nullptr
+   * */
+  static std::shared_ptr<DBConnection> cloneConnection(DBConnection* orig);
+
+ private:
+  /**
+   * \brief Логгер модуля БД
+   * */
+  static PrivateLogging db_logger_;
+};
+
+/* template methods of DBConnectionManager */
+template <class TableI>
+mstatus_t DBConnectionManager::SaveSingleRow(TableI& ti, int* id_p) {
+  std::unique_ptr<db_query_insert_setup> dis(
+      tables_->InitInsertSetup<TableI>({ti}));
+  db_save_point sp("save_" + tables_->GetTableName<TableI>());
+  id_container id_vec;
+  mstatus_t st =
+      exec_wrap<const db_query_insert_setup&, id_container,
+                void (DBConnectionManager::*)(
+                    Transaction*, const db_query_insert_setup&, id_container*)>(
+          *dis, &id_vec, &DBConnectionManager::saveRows, &sp);
+  if (id_vec.id_vec.size() && id_p)
+    *id_p = id_vec.id_vec[0];
+  return st;
+}
+template <class TableI>
+mstatus_t DBConnectionManager::SaveVectorOfRows(const std::vector<TableI>& tis,
+                                                id_container* id_vec_p) {
+  std::unique_ptr<db_query_insert_setup> dis(
+      tables_->InitInsertSetup<TableI>(tis));
+  mstatus_t st = STATUS_NOT;
+  if (dis.get()) {
+    db_save_point sp("save_" + tables_->GetTableName<TableI>());
+    st = exec_wrap<const db_query_insert_setup&, id_container,
+                   void (DBConnectionManager::*)(Transaction*,
+                                                 const db_query_insert_setup&,
+                                                 id_container*)>(
+        *dis, id_vec_p, &DBConnectionManager::saveRows, &sp);
+  } else {
+    Logging::Append(io_loglvl::warn_logs,
+                    "Ошибка добавления набора строк "
+                    "к БД - не инициализирован сетап добавляемыхх данных");
+  }
+  return st;
+}
+template <class TableI>
+mstatus_t DBConnectionManager::SaveNotExistsRows(const std::vector<TableI>& tis,
+                                                 id_container* id_vec_p) {
+  id_container id_vec;
+  id_vec.id_vec = std::vector<int>(tis.size());
+  size_t exists_num = 0;
+  for (size_t i = 0; i < tis.size(); ++i) {
+    std::vector<TableI> s;
+    id_vec.id_vec[i] = -1;
+    if (is_status_ok(SelectRows(tis[i], &s))) {
+      if (s.size()) {
+        exists_num++;
+        id_vec.id_vec[i] = s[0].id;
+      }
+    }
+  }
+  mstatus_t st = STATUS_DEFAULT;
+  if (exists_num == tis.size()) {
+    // все элементы оказались наместе
+    if (id_vec_p) {
+      id_vec_p->id_vec.swap(id_vec.id_vec);
+      st = id_vec_p->status = STATUS_OK;
+    }
+  } else if (exists_num == 0) {
+    // все элементы новенькие
+    st = SaveVectorOfRows(tis, id_vec_p);
+  } else {
+    // есть но не все
+    std::vector<TableI> tis_ex;
+    for (size_t i = 0; i < tis.size(); ++i)
+      if (id_vec.id_vec[i] == -1)
+        tis_ex.push_back(tis[i]);
+    id_container id_vec_ex;
+    st = SaveVectorOfRows(tis_ex, &id_vec_ex);
+    if (is_status_ok(st)) {
+      auto it_vec_ex = id_vec_ex.id_vec.begin();
+      auto it_vec = std::find_if(id_vec.id_vec.begin(), id_vec.id_vec.end(),
+                                 [](int id) { return id == -1; });
+      while (it_vec_ex != id_vec_ex.id_vec.end() &&
+             it_vec != id_vec.id_vec.end()) {
+        *it_vec = *it_vec_ex;
+        it_vec = std::find_if(it_vec, id_vec.id_vec.end(),
+                              [](int id) { return id == -1; });
+      }
+      id_vec_p->id_vec.swap(id_vec.id_vec);
+      st = id_vec_p->status = STATUS_OK;
+    }
+  }
+  return st;
+}
+
+template <class TableI, class ContainerT = std::vector<TableI>>
+mstatus_t DBConnectionManager::SelectRows(const TableI& where,
+                                          ContainerT* res) {
+  return selectData(tables_->GetTableCode<TableI>(), where, res);
+}
+
+template <class TableI>
+mstatus_t DBConnectionManager::DeleteRows(TableI& where) {
+  std::unique_ptr<db_query_delete_setup> dds(
+      db_query_delete_setup::Init(tables_, tables_->GetTableCode<TableI>()));
+  if (dds)
+    tables_->InitInsertTree<TableI>(where).swap(dds->where_condition);
+  db_save_point sp("delete_rows");
+  return exec_wrap<const db_query_delete_setup&, void,
+                   void (DBConnectionManager::*)(
+                       Transaction*, const db_query_delete_setup&, void*)>(
+      *dds, nullptr, &DBConnectionManager::deleteRows, &sp);
+}
+template <class DataT, class OutT, class SetupQueryF>
+mstatus_t DBConnectionManager::exec_wrap(DataT data,
+                                         OutT* res,
+                                         SetupQueryF setup_m,
+                                         db_save_point* sp_ptr) {
+  if (status_ == STATUS_DEFAULT)
+    status_ = CheckConnection();
+  mstatus_t trans_st;
+  if (db_connection_ && is_status_aval(status_)) {
+    auto c = DBConnectionCreator().cloneConnection(db_connection_.get());
+    if (c.get()) {
+      Transaction tr(c.get());
+      tr.AddQuery(QuerySmartPtr(new DBQuerySetupConnection(c.get())));
+      // добавить точку сохранения, если есть необходимость
+      if (sp_ptr)
+        tr.AddQuery(QuerySmartPtr(new DBQueryAddSavePoint(c.get(), *sp_ptr)));
+      // добавить специализированные запросы
+      std::invoke(setup_m, *this, &tr, data, res);
+      tr.AddQuery(QuerySmartPtr(new DBQueryCloseConnection(c.get())));
+      try {
+        trans_st = tryExecuteTransaction(tr);
+      } catch (DBException& e) {
+        e.LogException();
+        trans_st = STATUS_HAVE_ERROR;
+      } catch (std::exception& e) {
+        trans_st = STATUS_HAVE_ERROR;
+        error_.SetError(ERROR_DB_OPERATION,
+                        "Нерегламентированная ошибка" + std::string(e.what()));
+      }
+    }
+  } else {
+    error_.SetError(ERROR_DB_CONNECTION,
+                    "Не удалось установить "
+                    "соединение для БД: " +
+                        parameters_.GetInfo());
+    status_ = trans_st = STATUS_HAVE_ERROR;
+  }
+  return trans_st;
+}
+template <class DataT>
+mstatus_t DBConnectionManager::selectData(db_table t,
+                                          const DataT& where,
+                                          std::vector<DataT>* res) {
+  std::unique_ptr<db_query_select_setup> dss(
+      db_query_select_setup::Init(tables_, t));
+  if (dss)
+    tables_->InitInsertTree<DataT>(where).swap(dss->where_condition);
+  db_query_select_result result(*dss);
+  auto st = exec_wrap<const db_query_select_setup&, db_query_select_result,
+                      void (DBConnectionManager::*)(
+                          Transaction*, const db_query_select_setup&,
+                          db_query_select_result*)>(
+      *dss, &result, &DBConnectionManager::selectRows, nullptr);
+  if (is_status_ok(st))
+    tables_->SetSelectData(&result, res);
+  return st;
+}
+
 }  // namespace asp_db
 
 #endif  // !_DATABASE__DB_CONNECTION_MANAGER_H_
