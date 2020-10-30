@@ -56,7 +56,7 @@ struct db_query_update_setup : public db_query_select_setup {
 
 /* select result */
 /**
- * \brief Структура для сборки INSERT запросов
+ * \brief Структура для сборки ответов на запросы
  * */
 struct db_query_select_result : public db_query_basesetup {
  public:

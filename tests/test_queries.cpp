@@ -13,6 +13,9 @@
 
 LibraryDBTables adb;
 
-TEST(db_where_tree, DISABLED_model_info) {
+TEST(db_where_tree, DBTableBetween) {
+  // todo: не прозрачна связь между параметром шаблона и id столбца
+  auto d =
+      adb.Between<table_book>(BOOK_TITLE, std::string("a"), std::string("z"));
   // вынесены в test_excpression.cpp
 }

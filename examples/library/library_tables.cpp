@@ -268,6 +268,7 @@ void IDBTables::setInsertValues<author>(db_query_insert_setup* src,
   insert_macro(author::f_d_year, AUTHOR_DIED_YEAR,
                std::to_string(select_data.died_year));
   if (select_data.books.size())
+    // todo: replace TranslateFromVector with field2str
     insert_macro(author::f_books, AUTHOR_BOOKS,
                  db_variable::TranslateFromVector(select_data.books.begin(),
                                                   select_data.books.end()));
@@ -275,6 +276,7 @@ void IDBTables::setInsertValues<author>(db_query_insert_setup* src,
 }
 
 std::string setInsertValue_author_book(const author& select_data) {
+  // todo: replace TranslateFromVector with field2str
   return db_variable::TranslateFromVector(select_data.books.begin(),
                                           select_data.books.end());
 }

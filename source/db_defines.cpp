@@ -61,6 +61,18 @@ merror_t db_variable::CheckYourself() const {
   return ew;
 }
 
+std::string db_variable::TimeToString(tm* tm) {
+  char t[16] = {0};
+  sprintf(t, "%02d:%02d:%02d", tm->tm_hour, tm->tm_min, tm->tm_sec);
+  return std::string(t);
+}
+
+std::string db_variable::DateToString(tm* tm) {
+  char d[16] = {0};
+  sprintf(d, "%04d-%02d-%02d", tm->tm_hour, tm->tm_min, tm->tm_sec);
+  return std::string(d);
+}
+
 bool db_variable::operator==(const db_variable& r) const {
   bool same = strcmp(r.fname, fname) == 0;
   same &= r.type == type;

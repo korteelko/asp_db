@@ -306,6 +306,7 @@ std::string expression_node<T>::GetString(DataFieldToStrF dts) const {
 template <>
 std::string expression_node<where_node_data>::GetString(
     DataFieldToStrF dts) const;
+
 /**
  * \brief Шаблончик на сетап поддеревьев
  *

@@ -19,6 +19,7 @@
 #include "db_queries_setup_select.h"
 
 #include <algorithm>
+#include <exception>
 #include <memory>
 #include <string>
 #include <vector>
@@ -51,8 +52,45 @@
   }
 
 namespace asp_db {
+namespace wns = where_nodes_setup;
 #define UNDEFINED_TABLE 0x00000000
 #define UNDEFINED_COLUMN 0x00000000
+
+/**
+ * \brief Класс исключений полученных при работе с объектами IDBTables
+ * */
+class idbtables_exception : public std::exception {
+ public:
+  idbtables_exception(const std::string& msg);
+  idbtables_exception(class IDBTables* tables, const std::string& msg);
+  idbtables_exception(class IDBTables* tables,
+                      db_table t,
+                      const std::string& msg);
+  idbtables_exception(class IDBTables* tables,
+                      db_table t,
+                      db_variable_id id,
+                      const std::string& msg);
+
+  const char* what() const noexcept override;
+  /**
+   * \brief Добавить дополнительную, инициализированную информацию
+   *   о таблице, о колонке таблицы(и т.д.) к сообщению исключения
+   * */
+  std::string WhatWithDataInfo() const;
+
+  db_table GetTable() const;
+  db_variable_id GetFieldID() const;
+
+ protected:
+  /// пространство таблиц
+  IDBTables* tables_ = nullptr;
+  /// идентификатор таблицы
+  const db_table table_;
+  /// идентификатор колонки таблицы
+  db_variable_id field_id_;
+  /// сообщение исключения
+  std::string msg_;
+};
 
 /**
  * \brief Интерфейс объекта-связи таблиц для модуля базы данных
@@ -62,6 +100,12 @@ class IDBTables {
   virtual ~IDBTables() {}
 
   /**
+   * \brief Получить имя пространства имён таблиц
+   *
+   * \return Название пространства имён таблиц
+   * */
+  virtual std::string GetTablesNamespace() const { return "IDBTables"; }
+  /**
    * \brief Получить имя таблицы по её id
    * \param t Идентификатор таблицы
    *
@@ -70,6 +114,7 @@ class IDBTables {
   virtual std::string GetTableName(db_table t) const = 0;
   /**
    * \brief Получить id таблицы по её имени
+   * \param tname Имя таблицы
    *
    * \return id таблицы
    * */
@@ -100,10 +145,11 @@ class IDBTables {
    * \brief Шаблон функции получения имени таблицы по типу.
    *   Шаблон специализируется классами используемых
    *   таблиц в основной программе
+   * \tparam Класс с++ структуры/имплементирующей таблицу БД
    *
    * \return Имя таблицы
    * */
-  template <class T>
+  template <class TableI>
   std::string GetTableName() const {
     return "";
   }
@@ -111,17 +157,43 @@ class IDBTables {
    * \brief Шаблон функции получения кода таблицы по типу.
    *   Шаблон специализируется классами используемых
    *   таблиц в основной программе
+   * \tparam Тип с++ структуры/имплементирующей таблицу БД
    *
    * \return id таблицы
    * */
-  template <class T>
+  template <class TableI>
   db_table GetTableCode() const {
     return UNDEFINED_TABLE;
+  }
+  /**
+   * \brief Получить сслылку на структуру данных поля таблицы по его id
+   * \tparam table Класс с++-структуры/таблицы данных
+   * \param id Идентификатор таблицы
+   *
+   * \return Ссылка на данные поля таблицы
+   *
+   * \throw idbtables_exception Если соответствующего поля не было обнаружено
+   * */
+  template <db_table table>
+  const db_variable& GetFieldById(db_variable_id id) {
+    const db_fields_collection* fc = GetFieldsCollection(table);
+    if (fc) {
+      for (auto f = fc->begin(); f != fc->end(); ++f)
+        if (f->fid == id)
+          return *f;
+    } else {
+      throw idbtables_exception(
+          this, table, "IDBTables метод GetFieldCollection вернул nullptr");
+    }
+    throw idbtables_exception(
+        this, table, id,
+        "IDBTables не найдено поле с id " + std::to_string(id));
   }
 
   /**
    * \brief Собрать структуру/обёртку над входными
    *   данными для INSERT операции БД
+   * \tparam Класс с++ структуры/имплементирующей таблицу БД
    * \param insert_data Ссылка на вектор(?контейнер)
    *   добавляемых в бд структур
    *
@@ -175,6 +247,37 @@ class IDBTables {
       const TableI& where) const {
     auto is = InitInsertSetup<TableI>({where});
     return (is.get() != nullptr) ? is->InitInsertTree() : nullptr;
+  }
+
+  /**
+   * \brief Шаблон функции собирающей узлы `Between` операций для where
+   *   условий.
+   *
+   * \tparam t Тип таблицы
+   * \tparam Tval Тип данных
+   *
+   * \param field_id Идентификатор обновляемого поля
+   * \param min Нижняя граница значения параметров
+   * \param max Верхняя граница изменения параметра
+   * \param inverse Искать вне границ заданого участка
+   * */
+  template <db_table t, class Tval>
+  wns::node_ptr Between(db_variable_id field_id,
+                        const Tval& min,
+                        const Tval& max,
+                        bool inverse = false) {
+    wns::node_ptr between = nullptr;
+    try {
+      const db_variable& field = GetFieldById<t>(field_id);
+      between = wns::node_between(
+          field, field2str<Tval>::translate(min, field.type),
+          field2str<Tval>::translate(max, field.type), inverse);
+
+    } catch (idbtables_exception& e) {
+      // добавить к сообщению об ошибке дополнителоьную информацию
+      Logging::Append(io_loglvl::err_logs, e.WhatWithDataInfo());
+    }
+    return between;
   }
 
  protected:
