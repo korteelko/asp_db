@@ -88,6 +88,22 @@ bool db_variable::operator!=(const db_variable& r) const {
   return !(*this == r);
 }
 
+/* db_variable_exception */
+db_variable_exception::db_variable_exception(const std::string& msg)
+    : orig_msg_(msg), msg_(msg) {}
+
+db_variable_exception::db_variable_exception(db_variable& v,
+                                             const std::string& msg)
+    : orig_msg_(msg) {
+  var_info_ =
+      "Имя поля " + std::string(v.fname) + "\nid поля " + std::to_string(v.fid);
+  msg_ = orig_msg_ + "\n" + var_info_;
+}
+
+const char* db_variable_exception::what() const noexcept {
+  return msg_.c_str();
+}
+
 /* db_reference */
 db_reference::db_reference(const std::string& fname,
                            db_table ftable,

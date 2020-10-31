@@ -99,6 +99,26 @@ std::string db_client_to_string(db_client client);
 struct db_variable {
  public:
   /**
+   * \brief Класс исключений db_variable
+   * */
+  class db_variable_exception : public std::exception {
+   public:
+    db_variable_exception(const std::string& msg);
+    db_variable_exception(db_variable& v, const std::string& msg);
+
+    const char* what() const noexcept override;
+
+   private:
+    /// Оригинальное сообщение исключения
+    std::string orig_msg_;
+    /// Информация о поле таблицы БД
+    std::string var_info_;
+    /// Результирующее сообщение
+    std::string msg_;
+  };
+
+ public:
+  /**
    * \brief Перечисление допустимых типов данных
    * \note Идея расширить функционал на вывод в файл.
    *   По сетап данным из db_queries_setup.h можно
@@ -108,7 +128,7 @@ struct db_variable {
    * \todo А как правильно разграничить 'text' и 'char_array'
    *   postgre вот не парится, text'ом назвал char_array
    * */
-  enum class db_variable_type {
+  enum class db_variable_type : uint32_t {
     /** пустой тип */
     type_empty = 0,
     /** автоинкрементируюмое поле id
@@ -254,7 +274,10 @@ struct db_variable {
             break;
           }
         } else {
-          op("");
+          // ошибка формата строки
+          throw db_variable_exception(
+              std::string("Ошибка формата строки в функции TranslateToVector") +
+              "\nВход функции: " + str);
         }
       } else {
         break;
@@ -265,108 +288,62 @@ struct db_variable {
   }
 };
 using db_variable_type = db_variable::db_variable_type;
+using db_variable_exception = db_variable::db_variable_exception;
 
 /**
  * \brief Шаблон функтора приведения значений к строковому виду
  * */
-template <class T, db_variable_type vtype = db_variable_type::type_empty>
 struct field2str {
-  /**
-   * \brief Прототип функции конвертации к строке
-   * */
-  static std::string translate(const T& val, db_variable_type vt) {
-    switch (vt) {
-      case db_variable_type::type_date:
-        return field2str<T, db_variable_type::type_date>::translate(val);
-      case db_variable_type::type_time:
-        return field2str<T, db_variable_type::type_time>::translate(val);
-      case db_variable_type::type_char_array:
-      case db_variable_type::type_text:
-        return field2str<T, db_variable_type::type_char_array>::translate(val);
-      // и здесь переход от типа аргумента к типу шаблона
-      default:
-        return field2str<T, db_variable_type::type_empty>::translate(val);
+  // шаблон для чмсленных типов
+  template <
+      class T,
+      typename = typename std::enable_if<std::is_arithmetic<T>::value, T>::type>
+  static std::string translate(const T& val, db_variable_type) {
+    return std::to_string(val);
+  }
+  static std::string translate(tm* val, db_variable_type type) {
+    if (type == db_variable_type::type_date) {
+      return db_variable::DateToString(val);
+    } else if (type == db_variable_type::type_time) {
+      return db_variable::TimeToString(val);
     }
+    throw db_variable_exception(
+        "Несоответствие приведения типов для времени/даты"
+        "\nКод типа: " +
+        std::to_string((uint32_t)type));
   }
   /**
    * \brief Перегрузка функции приведения данных контейнера к строковому
    *   представлению
    * */
-  template <class U = pass<std::string>>
-  static std::string translate(const std::vector<T>& c, U to_str = U()) {
+  template <class T, class U = pass<std::string>>
+  static std::string translate(const std::vector<T>& c,
+                               db_variable_type,
+                               U to_str = U()) {
     return TranslateFromVector(c.begin(), c.end(), to_str);
   }
-};
-/**
- * \brief Перегрузка шаблон функтора приведения значений к строковому виду,
- *   собственно для строк
- * */
-template <db_variable_type vtype>
-struct field2str<std::string, vtype> {
-  static std::string translate(const std::string& val) { return val; }
   static std::string translate(const std::string& val, db_variable_type) {
+    // todo: возможно здесь общий конвертер `строка`->`строку`, но
+    //   учитывающий специфику обрабатываемого типа значения БД
     return val;
   }
+  static std::string translate(const char* val, db_variable_type) {
+    return std::string(val);
+  }
 };
-/**
- * \brief Макро общего подхода к работе функтора преобразования строк
- *
- * \todo Или не функтора, как вообще в принципе то смотрится?
- *
- * Набор макросов/шаблонов для переработки оригинальных типов данных
- * таблиц БД в строковые
- * */
-#define field2str_inst(type, to_str)                                   \
-  template <class T>                                                   \
-  struct field2str<T, type> {                                          \
-    static std::string translate(const T& val) { return to_str(val); } \
-  };
-/*
- * default template
-field2str_inst(db_variable_type::type_autoinc, std::to_string);
-field2str_inst(db_variable_type::type_uuid, std::to_string);
-field2str_inst(db_variable_type::type_bool, std::to_string);
-field2str_inst(db_variable_type::type_short, std::to_string);
-field2str_inst(db_variable_type::type_int, std::to_string);
-field2str_inst(db_variable_type::type_long, std::to_string);
-field2str_inst(db_variable_type::type_real, std::to_string);*/
-field2str_inst(db_variable_type::type_date, db_variable::DateToString);
-field2str_inst(db_variable_type::type_time, db_variable::TimeToString);
-// copy constructors
-field2str_inst(db_variable_type::type_char_array, std::string);
-field2str_inst(db_variable_type::type_text, std::string);
-
-/**
- * \brief Перегрузка функции прокидывания строкового значения для
- *   поддержания интерфейса преобразования значений полей таблицы
- *   к их строковым представлениям
- * */
-/*inline std::string field2str(db_variable_type, const std::string& str) {
-  return str;
-}*/
-/**
- * \brief Перегрузка функции приведения значения числового
- *   поля к строковому представлению
- * */
-/*template <
-    class T,
-    typename = typename std::enable_if<std::is_arithmetic<T>::value, T>::type>
-std::string field2str(db_variable_type, const T& t) {
-  return std::to_string(t);
-}*/
-/**
- * \brief Перегрузка функции приведения значения поля даты
- *   к строковому представлению
- * */
 
 /* complex_pk */
-/** \brief структура содержащая параметры первичного ключа */
+/**
+ * \brief структура содержащая параметры первичного ключа
+ * */
 struct db_complex_pk {
   std::vector<std::string> fnames;
 };
 
-/** \brief enum действий над объектами со ссылками на другие элементами:
- *   колонками другой таблицы или самими таблицами */
+/**
+ * \brief enum действий над объектами со ссылками на другие элементами:
+ *   колонками другой таблицы или самими таблицами
+ * */
 enum class db_reference_act {
   /** \brief Ничего не делать */
   ref_act_not = 0,

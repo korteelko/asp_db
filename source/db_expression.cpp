@@ -172,6 +172,22 @@ std::string expression_node<where_node_data>::GetString(
     r = right->GetString(dts);
   return (braced) ? "(" + l + result + r + ")" : l + result + r;
 }
+/**
+ * \brief Макрос регистрирующий функцию инициализации узлов дерева запросов
+ *
+ * Шаблоные функции `where_node_creator` портят читаемость кода, и пусть они
+ * останутся на уровень абстракции пониже
+ * */
+#define leaf_node_access(op)                                           \
+  where_node_creator<where_node_data, db_operator_t::op_##op>::create( \
+      var.fname, where_table_pair(var.type, value));
+/**
+ * \brief Макрос регистрирующий функцию инициализацию внутреннего узла
+ *   дерева запросов
+ * */
+#define inner_node_access(op)                     \
+  expression_node<where_node_data>::AddCondition( \
+      where_node_data(db_operator_t::op_##op), left, right);
 
 namespace where_nodes_setup {
 node_ptr node_eq(const db_variable& var, const std::string& value) {

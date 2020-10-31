@@ -248,7 +248,62 @@ class IDBTables {
     auto is = InitInsertSetup<TableI>({where});
     return (is.get() != nullptr) ? is->InitInsertTree() : nullptr;
   }
-
+  /* nodes */
+  template <db_table t, class Tval>
+  wns::node_ptr Eq(db_variable_id field_id, const Tval& val) {
+    return node_bind<t>(field_id, val, wns::node_eq);
+  }
+  template <db_table t, class Tval>
+  wns::node_ptr Is(db_variable_id field_id, const Tval& val) {
+    return node_bind<t>(field_id, val, wns::node_is);
+  }
+  template <db_table t, class Tval>
+  wns::node_ptr Ne(db_variable_id field_id, const Tval& val) {
+    return node_bind<t>(field_id, val, wns::node_ne);
+  }
+  template <db_table t, class Tval>
+  wns::node_ptr Ge(db_variable_id field_id, const Tval& val) {
+    return node_bind<t>(field_id, val, wns::node_ge);
+  }
+  template <db_table t, class Tval>
+  wns::node_ptr Gt(db_variable_id field_id, const Tval& val) {
+    return node_bind<t>(field_id, val, wns::node_gt);
+  }
+  template <db_table t, class Tval>
+  wns::node_ptr Le(db_variable_id field_id, const Tval& val) {
+    return node_bind<t>(field_id, val, wns::node_le);
+  }
+  template <db_table t, class Tval>
+  wns::node_ptr Lt(db_variable_id field_id, const Tval& val) {
+    return node_bind<t>(field_id, val, wns::node_lt);
+  }
+  /**
+   * \brief Шаблон функции собирающей узлы `Like` операций для where
+   *   условий.
+   *
+   * \tparam t Тип таблицы
+   * \tparam Tval Тип данных
+   *
+   * \param field_id Идентификатор обновляемого поля
+   * \param val
+   *
+   * \note Функция доступна только символьных полей и значений
+   * */
+  template <db_table t, class Tval>
+  wns::node_ptr Like(db_variable_id field_id,
+                     const Tval& val,
+                     bool inverse = false) {
+    wns::node_ptr like = nullptr;
+    try {
+      const db_variable& field = GetFieldById<t>(field_id);
+      like =
+          wns::node_like(field, field2str::translate(val, field.type), inverse);
+    } catch (idbtables_exception& e) {
+      // добавить к сообщению об ошибке дополнителоьную информацию
+      Logging::Append(io_loglvl::err_logs, e.WhatWithDataInfo());
+    }
+    return like;
+  }
   /**
    * \brief Шаблон функции собирающей узлы `Between` операций для where
    *   условий.
@@ -269,10 +324,9 @@ class IDBTables {
     wns::node_ptr between = nullptr;
     try {
       const db_variable& field = GetFieldById<t>(field_id);
-      between = wns::node_between(
-          field, field2str<Tval>::translate(min, field.type),
-          field2str<Tval>::translate(max, field.type), inverse);
-
+      between =
+          wns::node_between(field, field2str::translate(min, field.type),
+                            field2str::translate(max, field.type), inverse);
     } catch (idbtables_exception& e) {
       // добавить к сообщению об ошибке дополнителоьную информацию
       Logging::Append(io_loglvl::err_logs, e.WhatWithDataInfo());
@@ -355,6 +409,26 @@ class IDBTables {
       std::transform(cont->begin(), cont->end(), cont->begin(), str2type);
     }
     return st;
+  }
+  /**
+   * \brief Функция создания двухпараметрических узлов - кроме `like`,
+   *   `between`, `in`, без инвертирования
+   * */
+  template <db_table t, class Tval>
+  wns::node_ptr node_bind(
+      db_variable_id field_id,
+      const Tval& val,
+      std::function<wns::node_ptr(const db_variable&, const std::string&)>
+          node_create) {
+    wns::node_ptr node = nullptr;
+    try {
+      const db_variable& field = GetFieldById<t>(field_id);
+      node = node_create(field, field2str::translate(val, field.type));
+    } catch (idbtables_exception& e) {
+      // добавить к сообщению об ошибке дополнителоьную информацию
+      Logging::Append(io_loglvl::err_logs, e.WhatWithDataInfo());
+    }
+    return node;
   }
 };
 }  // namespace asp_db
