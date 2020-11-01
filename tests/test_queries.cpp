@@ -78,22 +78,23 @@ TEST(db_where_tree, DBTableAnd) {
 }
 
 TEST(WhereTreeSetup, Init) {
+  WhereTree wt;
   WhereTreeSetup ts(&ldb);
-  ts.Init(ts.And(ts.Ge<table_translation>(TRANS_ID, 3),
+  wt.Init(ts.And(ts.Ge<table_translation>(TRANS_ID, 3),
                  ts.Lt<table_translation>(TRANS_ID, 10),
                  ts.Eq<table_translation>(TRANS_LANG, int(lang_rus))));
   // проверим результат инициализации
   std::string wts = std::string("((") + TRANS_ID_NAME + " >= 3) AND (" +
                     TRANS_ID_NAME + " < 10)) AND (" + TRANS_LANG_NAME + " = " +
                     std::to_string(int(lang_rus)) + ")";
-  EXPECT_STRCASEEQ(ts.GetWhereTree()->GetString().c_str(), wts.c_str());
+  EXPECT_STRCASEEQ(wt.GetWhereTree()->GetString().c_str(), wts.c_str());
   // продолжим
-  ts.AddOr(ts.And(ts.Gt<table_translation>(TRANS_ID, 13),
+  wt.AddOr(ts.And(ts.Gt<table_translation>(TRANS_ID, 13),
                   ts.Lt<table_translation>(TRANS_ID, 15)));
   // снова проверим
   std::string wfs = std::string("(((") + TRANS_ID_NAME + " >= 3) AND (" +
                     TRANS_ID_NAME + " < 10)) AND (" + TRANS_LANG_NAME + " = " +
                     std::to_string(int(lang_rus)) + ")) OR ((" + TRANS_ID_NAME +
                     " > 13" + ") AND (" + TRANS_ID_NAME + " < 15))";
-  EXPECT_STRCASEEQ(ts.GetWhereTree()->GetString().c_str(), wfs.c_str());
+  EXPECT_STRCASEEQ(wt.GetWhereTree()->GetString().c_str(), wfs.c_str());
 }
