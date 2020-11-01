@@ -1,6 +1,7 @@
 #include "db_queries_setup.h"
 #include "db_queries_setup_select.h"
 #include "db_tables.h"
+#include "db_where.h"
 #include "library_tables.h"
 
 #include "gtest/gtest.h"
@@ -11,7 +12,8 @@
 
 #include <assert.h>
 
-LibraryDBTables adb;
+LibraryDBTables ldb;
+WhereTreeSetup adb(&ldb);
 
 TEST(db_where_tree, DBTableBetween) {
   // todo: не прозрачна связь между параметром шаблона и id столбца
