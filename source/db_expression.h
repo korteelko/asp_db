@@ -138,7 +138,9 @@ struct where_node_data {
     /// оператор `where` условия ('EQ', 'LIKE' etc)
     db_operator,
     /// значение поля
-    value
+    value,
+    /// уже сформатированные данные, только записать
+    raw
   };
 
  public:
@@ -156,19 +158,23 @@ struct where_node_data {
   /**
    * \brief Создать ноду с данными оператора
    * */
-  where_node_data(db_operator_wrapper op);
+  explicit where_node_data(db_operator_wrapper op);
+  /**
+   * \brief Создать ноду с данными имени или значения столбца БД
+   * */
+  explicit where_node_data(const db_table_pair& value);
   /**
    * \brief Создать ноду с данными значения столбца БД
    * */
   where_node_data(db_variable_type db_v, const std::string& value);
   /**
-   * \brief Создать ноду с данными имени или значения столбца БД
-   * */
-  where_node_data(const db_table_pair& value);
-  /**
    * \brief Создать ноду с данными имени столбца
    * */
-  where_node_data(const std::string& fname);
+  static where_node_data field_name_node(const std::string& fname);
+  /**
+   * \brief Создать ноду с уже сфомированными данными
+   * */
+  static where_node_data raw_data_node(const std::string& data);
 
   /**
    * \brief Получить строковое представление данных
@@ -189,11 +195,26 @@ struct where_node_data {
    * */
   bool IsOperator() const;
   /**
-   * \brief Проверить тип хранимых данных является именем поля
+   * \brief Является ли тип хранимых данных именем поля
    *
    * \return true Для имени поля
    * */
   bool IsFieldName() const;
+  /**
+   * \brief Является ли тип хранимых данных значением
+   *
+   * \return true Для `value`
+   * */
+  bool IsValue() const;
+  /**
+   * \brief Является ли тип хранимых данных `форматированными данными`
+   *
+   * \return true Для `raw`
+   * */
+  bool IsRawData() const;
+
+ protected:
+  where_node_data(ndata_type t, const db_table_pair& p);
 };
 using where_ndata_type = where_node_data::ndata_type;
 using where_table_pair = where_node_data::db_table_pair;
@@ -270,7 +291,8 @@ struct expression_node {
     } else if ((left.get() == nullptr) && (right.get() == nullptr)) {
       // если оба узла пусты
       root = std::make_shared<expression_node>(
-          nullptr, db_operator_wrapper(db_operator_t::op_empty));
+          nullptr,
+          where_node_data(db_operator_wrapper(db_operator_t::op_empty)));
     } else if (left.get() != nullptr) {
       // не пуст только левый узел
       root = left;
@@ -338,7 +360,7 @@ std::string expression_node<where_node_data>::GetString(
  *   `x` operator `X`
  * \todo Найти более бодходящее имя, с учётом статичной типизации
  * */
-template <class T, db_operator_t op>
+template <db_operator_t op>
 struct where_node_creator {
   /**
    * \brief Создать поддерево оператора, где в корневом узле хранится
@@ -349,46 +371,46 @@ struct where_node_creator {
    * \param value Обёртка над значением поля таблицы БД, содержит
    *   и тип поля, и его строковое представление
    * */
-  static std::shared_ptr<expression_node<T>> create(
+  static std::shared_ptr<expression_node<where_node_data>> create(
       const std::string& fname,
       const where_table_pair& value) {
-    auto result = std::make_shared<expression_node<T>>(
-        nullptr, db_operator_wrapper(op, false));
-    result->CreateLeftNode(fname);
-    result->CreateRightNode(value);
+    auto result = std::make_shared<expression_node<where_node_data>>(
+        nullptr, where_node_data(db_operator_wrapper(op, false)));
+    result->CreateLeftNode(where_node_data::field_name_node(fname));
+    result->CreateRightNode(where_node_data(value));
     return result;
   }
-  static std::shared_ptr<expression_node<T>> create(
+  static std::shared_ptr<expression_node<where_node_data>> create(
       const std::string& fname,
-      std::shared_ptr<expression_node<T>>& cond) {
-    auto result = std::make_shared<expression_node<T>>(
-        nullptr, db_operator_wrapper(op, false));
-    result->CreateLeftNode(fname);
+      std::shared_ptr<expression_node<where_node_data>>& cond) {
+    auto result = std::make_shared<expression_node<where_node_data>>(
+        nullptr, where_node_data(db_operator_wrapper(op, false)));
+    result->CreateLeftNode(where_node_data::field_name_node(fname));
     result->AddRightNode(cond);
     return result;
   }
   /**
    * \brief Создать узел дерева запросов который уже содержит в себе заданную
    *   строку, которую необходимо просто добавить к остальному дереву
-   *
-   * \todo Доделать
    * */
-  static std::shared_ptr<expression_node<T>> create_raw(
+  static std::shared_ptr<expression_node<where_node_data>> create_raw(
       const std::string& raw_data) {
-    assert(0);
+    return std::make_shared<expression_node<where_node_data>>(
+        nullptr, where_node_data::raw_data_node(raw_data));
   }
 };
 // `like` or `not like`
-template <class T>
-struct where_node_creator<T, db_operator_t::op_like> {
-  static std::shared_ptr<expression_node<T>> create(
+template <>
+struct where_node_creator<db_operator_t::op_like> {
+  static std::shared_ptr<expression_node<where_node_data>> create(
       const std::string& fname,
       const where_table_pair& value,
       bool inverse) {
-    auto result = std::make_shared<expression_node<T>>(
-        nullptr, db_operator_wrapper(db_operator_t::op_like, inverse));
-    result->CreateLeftNode(fname);
-    result->CreateRightNode(value);
+    auto result = std::make_shared<expression_node<where_node_data>>(
+        nullptr,
+        where_node_data(db_operator_wrapper(db_operator_t::op_like, inverse)));
+    result->CreateLeftNode(where_node_data::field_name_node(fname));
+    result->CreateRightNode(where_node_data(value));
     return result;
   }
 };
@@ -413,21 +435,23 @@ values.end()); result->CreateRightNode(where_table_pair(type, values_str));
 };
 */
 // `between` or `not between`
-template <class T>
-struct where_node_creator<T, db_operator_t::op_between> {
-  static std::shared_ptr<expression_node<T>> create(
+template <>
+struct where_node_creator<db_operator_t::op_between> {
+  static std::shared_ptr<expression_node<where_node_data>> create(
       const std::string& fname,
       const where_table_pair& left,
       const where_table_pair& right,
       bool inverse) {
-    auto result = std::make_shared<expression_node<T>>(
-        nullptr, db_operator_wrapper(db_operator_t::op_between, inverse));
-    result->CreateLeftNode(fname);
+    auto result = std::make_shared<expression_node<where_node_data>>(
+        nullptr, where_node_data(
+                     db_operator_wrapper(db_operator_t::op_between, inverse)));
+    result->CreateLeftNode(where_node_data::field_name_node(fname));
     // добавить `and` поддерево с граница `between`
-    auto r = std::make_shared<expression_node<T>>(
-        nullptr, db_operator_wrapper(db_operator_t::op_and, false));
-    r->CreateLeftNode(left);
-    r->CreateRightNode(right);
+    auto r = std::make_shared<expression_node<where_node_data>>(
+        nullptr,
+        where_node_data(db_operator_wrapper(db_operator_t::op_and, false)));
+    r->CreateLeftNode(where_node_data(left));
+    r->CreateRightNode(where_node_data(right));
     result->AddRightNode(r);
     return result;
   }
@@ -447,7 +471,7 @@ class DBWhereClause {
   template <db_operator_t _op>
   static DBWhereClause CreateRoot(const std::string& fname,
                                   const where_table_pair& value) {
-    auto r = where_node_creator<T, _op>::create(fname, value);
+    auto r = where_node_creator<_op>::create(fname, value);
     return DBWhereClause(r);
   }
   DBWhereClause(std::shared_ptr<expression_node<T>> _root) : root(_root) {}
@@ -480,6 +504,11 @@ class DBWhereClause {
                                                 condition);
       root = r;
       ret = STATUS_OK;
+    } catch (db_variable_exception& e) {
+      Logging::Append(io_loglvl::err_logs,
+                      "Во время попытки добавления условия"
+                      " в AddCondition перхвачено исключение: ");
+      Logging::Append(io_loglvl::err_logs, e.what());
     } catch (std::bad_alloc&) {
       Logging::Append(io_loglvl::err_logs,
                       "Во время попытки добавления условия"
@@ -532,6 +561,7 @@ typedef std::shared_ptr<expression_node<where_node_data>> node_ptr;
 
 /* leaf nodes */
 /*  simple operators */
+node_ptr node_raw(const std::string& raw_data);
 node_ptr node_eq(const db_variable& var, const std::string& value);
 node_ptr node_is(const db_variable& var, const std::string& value);
 node_ptr node_ne(const db_variable& var, const std::string& value);

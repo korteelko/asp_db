@@ -45,11 +45,16 @@ class WhereTreeSetup {
       AddAnd(_and...);
     }
   }
-
+  /**
+   * \brief Наростить дерево другим поддеревом через `OR` узел
+   * */
   inline void AddOr(const wns::node_ptr& node) {
     if (clause_.get() != nullptr)
       clause_->AddCondition(db_operator_t::op_or, node);
   }
+  /**
+   * \brief Наростить дерево другим поддеревом, через `OR` узлы
+   * */
   template <class... Tor>
   void AddOr(wns::node_ptr& node, Tor... _or) {
     if (clause_.get() != nullptr) {
@@ -63,6 +68,19 @@ class WhereTreeSetup {
   }
 
   /* nodes */
+  /**
+   * \brief Собрать поддерево условия проверки равенства значений
+   * \tparam t Идентификатор таблицы
+   * \tparam tVal Тип значения
+   *
+   * \param field_id Идентификатор поля
+   * \param val Сравниваемое значение
+   *
+   * \return Узел дерева запросов
+   * */
+  inline wns::node_ptr RawData(const std::string& raw) {
+    return wns::node_raw(raw);
+  }
   /**
    * \brief Собрать поддерево условия проверки равенства значений
    * \tparam t Идентификатор таблицы

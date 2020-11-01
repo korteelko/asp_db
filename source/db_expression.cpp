@@ -89,9 +89,19 @@ where_node_data::where_node_data(const db_table_pair& value) : data(value) {
   }
 }
 
-where_node_data::where_node_data(const std::string& fname)
-    : data(db_table_pair(db_variable_type::type_empty, fname)),
-      ntype(ndata_type::field_name) {}
+where_node_data::where_node_data(where_node_data::ndata_type t,
+                                 const db_table_pair& p)
+    : data(p), ntype(t) {}
+
+where_node_data where_node_data::field_name_node(const std::string& fname) {
+  return where_node_data(ndata_type::field_name,
+                         db_table_pair(db_variable_type::type_empty, fname));
+}
+
+where_node_data where_node_data::raw_data_node(const std::string& data) {
+  return where_node_data(ndata_type::raw,
+                         db_table_pair(db_variable_type::type_empty, data));
+}
 
 std::string where_node_data::GetString() const {
   if (IsOperator()) {
@@ -140,6 +150,15 @@ bool where_node_data::IsFieldName() const {
   return ntype == ndata_type::field_name;
 }
 
+bool where_node_data::IsValue() const {
+  return ntype == ndata_type::value;
+}
+
+bool where_node_data::IsRawData() const {
+  return ntype == ndata_type::raw;
+}
+
+/* expression_node */
 template <>
 std::string expression_node<where_node_data>::GetString(
     DataFieldToStrF dts) const {
@@ -147,8 +166,13 @@ std::string expression_node<where_node_data>::GetString(
   std::string result;
   bool braced = false;
   if (field_data.IsFieldName()) {
+    // данные - имя поля
+    result = field_data.GetString();
+  } else if (field_data.IsRawData()) {
+    // данные - сформатированны
     result = field_data.GetString();
   } else if (field_data.IsOperator()) {
+    // данные - оператор
     result = field_data.GetString();
     braced = true;
     if (!parent) {
@@ -163,9 +187,13 @@ std::string expression_node<where_node_data>::GetString(
         // в `beetween -> x and y` скобками обрамлять `x and y` не надо
         braced = false;
     }
-  } else {
+  } else if (field_data.IsValue()) {
+    // данные - значение
     auto p = field_data.GetTablePair();
     result = dts(p.first, p.second);
+  } else {
+    throw db_variable_exception(
+        "Не обрабатываемый тип данных для where_node_data");
   }
   if (left.get())
     l = left->GetString(dts);
@@ -179,8 +207,8 @@ std::string expression_node<where_node_data>::GetString(
  * Шаблоные функции `where_node_creator` портят читаемость кода, и пусть они
  * останутся на уровень абстракции пониже
  * */
-#define leaf_node_access(op)                                           \
-  where_node_creator<where_node_data, db_operator_t::op_##op>::create( \
+#define leaf_node_access(op)                          \
+  where_node_creator<db_operator_t::op_##op>::create( \
       var.fname, where_table_pair(var.type, value));
 /**
  * \brief Макрос регистрирующий функцию инициализацию внутреннего узла
@@ -191,6 +219,11 @@ std::string expression_node<where_node_data>::GetString(
       where_node_data(db_operator_t::op_##op), left, right);
 
 namespace where_nodes {
+node_ptr node_raw(const std::string& raw_data) {
+  return std::make_shared<expression_node<where_node_data>>(
+      nullptr, where_node_data::raw_data_node(raw_data));
+}
+
 node_ptr node_eq(const db_variable& var, const std::string& value) {
   return leaf_node_access(eq);
 }
@@ -222,7 +255,7 @@ node_ptr node_lt(const db_variable& var, const std::string& value) {
 node_ptr node_like(const db_variable& var,
                    const std::string& value,
                    bool inverse) {
-  return where_node_creator<where_node_data, db_operator_t::op_like>::create(
+  return where_node_creator<db_operator_t::op_like>::create(
       var.fname, where_table_pair(var.type, value), inverse);
 }
 
@@ -230,7 +263,7 @@ node_ptr node_between(const db_variable& var,
                       const std::string& min,
                       const std::string& max,
                       bool inverse) {
-  return where_node_creator<where_node_data, db_operator_t::op_between>::create(
+  return where_node_creator<db_operator_t::op_between>::create(
       var.fname, where_table_pair(var.type, min),
       where_table_pair(var.type, max), inverse);
 }

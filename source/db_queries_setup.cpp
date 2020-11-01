@@ -174,9 +174,8 @@ db_query_insert_setup::InitInsertTree() {
     auto i = x.first;
     if (i != db_query_basesetup::field_index_end && i < fields.size()) {
       auto& f = fields[i];
-      auto node =
-          where_node_creator<where_node_data, db_operator_t::op_eq>::create(
-              std::string(f.fname), where_table_pair(f.type, x.second));
+      auto node = where_node_creator<db_operator_t::op_eq>::create(
+          std::string(f.fname), where_table_pair(f.type, x.second));
       if (node.get())
         source.push_back(node);
     }

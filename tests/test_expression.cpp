@@ -162,10 +162,8 @@ TEST(condition_node, CheckMap) {
  * */
 TEST(where_node_creator, main_template) {
   // eq
-  auto res_eq =
-      where_node_creator<where_node_data, db_operator_t::op_eq>::create(
-          "salud",
-          where_table_pair(db_variable_type::type_int, "hello world!"));
+  auto res_eq = where_node_creator<db_operator_t::op_eq>::create(
+      "salud", where_table_pair(db_variable_type::type_int, "hello world!"));
   EXPECT_EQ(res_eq->field_data.GetString(),
             data2str(db_operator_wrapper(db_operator_t::op_eq)));
   EXPECT_EQ(res_eq->GetLeft()->field_data.GetString(), "salud");
@@ -176,10 +174,8 @@ TEST(where_node_creator, main_template) {
                 "hello world!");
 
   // and
-  auto res_and =
-      where_node_creator<where_node_data, db_operator_t::op_and>::create(
-          "salud",
-          where_table_pair(db_variable_type::type_int, "hello world!"));
+  auto res_and = where_node_creator<db_operator_t::op_and>::create(
+      "salud", where_table_pair(db_variable_type::type_int, "hello world!"));
   EXPECT_EQ(res_and->field_data.GetString(),
             data2str(db_operator_wrapper(db_operator_t::op_and)));
   EXPECT_EQ(res_and->GetLeft()->field_data.GetString(), "salud");
@@ -189,9 +185,8 @@ TEST(where_node_creator, main_template) {
                 "hello world!");
 
   // or with nothing
-  auto res_or =
-      where_node_creator<where_node_data, db_operator_t::op_and>::create(
-          "", where_table_pair(db_variable_type::type_bool, ""));
+  auto res_or = where_node_creator<db_operator_t::op_and>::create(
+      "", where_table_pair(db_variable_type::type_bool, ""));
   EXPECT_EQ(res_or->field_data.GetString(),
             data2str(db_operator_wrapper(db_operator_t::op_and)));
   EXPECT_EQ(res_or->GetLeft()->field_data.GetString(), "");
@@ -199,9 +194,8 @@ TEST(where_node_creator, main_template) {
   EXPECT_EQ(res_or->GetString(),
             data2str(db_operator_wrapper(db_operator_t::op_and)));
   // or for text
-  auto res_or1 =
-      where_node_creator<where_node_data, db_operator_t::op_and>::create(
-          "", where_table_pair(db_variable_type::type_text, ""));
+  auto res_or1 = where_node_creator<db_operator_t::op_and>::create(
+      "", where_table_pair(db_variable_type::type_text, ""));
   EXPECT_EQ(res_or1->field_data.GetString(),
             data2str(db_operator_wrapper(db_operator_t::op_and)));
   EXPECT_EQ(res_or1->GetLeft()->field_data.GetString(), "");
@@ -212,10 +206,9 @@ TEST(where_node_creator, main_template) {
 
 TEST(where_node_creator, specializations) {
   // simple like
-  auto res_like =
-      where_node_creator<where_node_data, db_operator_t::op_like>::create(
-          "salud", where_table_pair(db_variable_type::type_int, "hello world!"),
-          false);
+  auto res_like = where_node_creator<db_operator_t::op_like>::create(
+      "salud", where_table_pair(db_variable_type::type_int, "hello world!"),
+      false);
   EXPECT_EQ(res_like->field_data.GetString(),
             data2str(db_operator_wrapper(db_operator_t::op_like)));
   EXPECT_EQ(res_like->GetLeft()->field_data.GetString(), "salud");
@@ -227,10 +220,9 @@ TEST(where_node_creator, specializations) {
 
   // not like
   auto notlike = db_operator_wrapper(db_operator_t::op_like, true);
-  auto res_nlike =
-      where_node_creator<where_node_data, db_operator_t::op_like>::create(
-          "salud",
-          where_table_pair(db_variable_type::type_text, "hello world!"), true);
+  auto res_nlike = where_node_creator<db_operator_t::op_like>::create(
+      "salud", where_table_pair(db_variable_type::type_text, "hello world!"),
+      true);
   EXPECT_EQ(res_nlike->field_data.GetString(), data2str(notlike));
   EXPECT_EQ(res_nlike->GetLeft()->field_data.GetString(), "salud");
   EXPECT_EQ(res_nlike->GetRight()->field_data.GetString(), "hello world!");
@@ -243,20 +235,19 @@ TEST(where_node_creator, specializations) {
 }
 TEST(db_where, complex_condition) {
   // eq
-  auto res_eq =
-      where_node_creator<where_node_data, db_operator_t::op_eq>::create(
-          "id", where_table_pair(db_variable_type::type_int, "12"));
+  auto res_eq = where_node_creator<db_operator_t::op_eq>::create(
+      "id", where_table_pair(db_variable_type::type_int, "12"));
   EXPECT_EQ(res_eq->GetString(),
             "id" + data2str(db_operator_wrapper(db_operator_t::op_eq)) + "12");
 
   // not like
-  auto res_nlike =
-      where_node_creator<where_node_data, db_operator_t::op_like>::create(
-          "func", where_table_pair(db_variable_type::type_int, "Regex"), true);
+  auto res_nlike = where_node_creator<db_operator_t::op_like>::create(
+      "func", where_table_pair(db_variable_type::type_int, "Regex"), true);
   EXPECT_STRCASEEQ(res_nlike->GetString().c_str(), "func not like Regex");
   std::shared_ptr<expression_node<where_node_data>> root =
       expression_node<where_node_data>::AddCondition(
-          db_operator_wrapper(db_operator_t::op_and, false), res_eq, res_nlike);
+          where_node_data(db_operator_wrapper(db_operator_t::op_and, false)),
+          res_eq, res_nlike);
   std::string root_str = res_eq->GetString() +
                          data2str(db_operator_wrapper(db_operator_t::op_and)) +
                          res_nlike->GetString();
@@ -300,18 +291,32 @@ TEST(db_where, node_api) {
 }
 
 TEST(db_where, AddCondition) {
-  auto res_eq =
-      where_node_creator<where_node_data, db_operator_t::op_eq>::create(
-          "ob", where_table_pair(db_variable_type::type_int, "4"));
-  auto res_is =
-      where_node_creator<where_node_data, db_operator_t::op_is>::create(
-          "obo", where_table_pair(db_variable_type::type_text, "hello world!"));
+  auto res_eq = where_node_creator<db_operator_t::op_eq>::create(
+      "ob", where_table_pair(db_variable_type::type_int, "4"));
+  auto res_is = where_node_creator<db_operator_t::op_is>::create(
+      "obo", where_table_pair(db_variable_type::type_text, "hello world!"));
   std::shared_ptr<expression_node<where_node_data>> root =
       expression_node<where_node_data>::AddCondition(
-          db_operator_wrapper(db_operator_t::op_and, false), res_eq, res_is);
+          where_node_data(db_operator_wrapper(db_operator_t::op_and, false)),
+          res_eq, res_is);
   std::string root_str = res_eq->GetString() +
                          data2str(db_operator_wrapper(db_operator_t::op_and)) +
                          res_is->GetString();
+  EXPECT_STRCASEEQ(root->GetString().c_str(), root_str.c_str());
+}
+
+TEST(db_where, raw_data) {
+  auto res_eq = where_node_creator<db_operator_t::op_eq>::create(
+      "ob", where_table_pair(db_variable_type::type_int, "4"));
+  std::string raw_str = " bla_name IN [0, 1, 2, 4, 8, 16, 32, 64]";
+  auto raw = node_raw(raw_str);
+  std::shared_ptr<expression_node<where_node_data>> root =
+      expression_node<where_node_data>::AddCondition(
+          where_node_data(db_operator_wrapper(db_operator_t::op_and, false)),
+          res_eq, raw);
+  std::string root_str = res_eq->GetString() +
+                         data2str(db_operator_wrapper(db_operator_t::op_and)) +
+                         raw_str;
   EXPECT_STRCASEEQ(root->GetString().c_str(), root_str.c_str());
 }
 
@@ -331,9 +336,8 @@ std::string test_dts(db_variable_type t, const std::string& v) {
 TEST(DBWhereClause, InitWhereClause) {
   auto w = DBWhereClause<where_node_data>::CreateRoot<db_operator_t::op_eq>(
       "fname", where_table_pair(db_variable_type::type_text, "hello world!"));
-  auto res_is =
-      where_node_creator<where_node_data, db_operator_t::op_lt>::create(
-          "obo", where_table_pair(db_variable_type::type_int, "4"));
+  auto res_is = where_node_creator<db_operator_t::op_lt>::create(
+      "obo", where_table_pair(db_variable_type::type_int, "4"));
 
   w.AddCondition(db_operator_wrapper(db_operator_t::op_and, false), res_is);
   std::string wstr = "(fname" + data2str(db_operator_t::op_eq) +
