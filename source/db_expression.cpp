@@ -156,7 +156,8 @@ std::string expression_node<where_node_data>::GetString(
       braced = false;
     } else {
       auto parent_op = parent->field_data.GetOperatorWrapper();
-      // for beetween,
+      // for beetween - чтобы не оборачивать границы опреатора,
+      //   которые разделеный `and`
       // ООООООООООООО,  сюда и про `in` запихать
       if (parent_op.op == db_operator_t::op_between)
         // в `beetween -> x and y` скобками обрамлять `x and y` не надо

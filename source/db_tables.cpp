@@ -48,4 +48,17 @@ db_table idbtables_exception::GetTable() const {
 db_variable_id idbtables_exception::GetFieldID() const {
   return field_id_;
 }
+
+where_nodes_setup::node_ptr IDBTables::And(
+    const where_nodes_setup::node_ptr& left,
+    const where_nodes_setup::node_ptr& right) {
+  return wns::node_and(left, right);
+}
+
+where_nodes_setup::node_ptr IDBTables::Or(
+    const where_nodes_setup::node_ptr& left,
+    const where_nodes_setup::node_ptr& right) {
+  return wns::node_or(left, right);
+}
+
 }  // namespace asp_db

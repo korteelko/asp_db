@@ -18,6 +18,7 @@
 
 #include <deque>
 #include <string>
+#include <type_traits>
 #include <vector>
 
 #include <assert.h>
@@ -298,10 +299,10 @@ struct field2str {
   template <
       class T,
       typename = typename std::enable_if<std::is_arithmetic<T>::value, T>::type>
-  static std::string translate(const T& val, db_variable_type) {
+  std::string translate(const T& val, db_variable_type) {
     return std::to_string(val);
   }
-  static std::string translate(tm* val, db_variable_type type) {
+  std::string translate(tm* val, db_variable_type type) {
     if (type == db_variable_type::type_date) {
       return db_variable::DateToString(val);
     } else if (type == db_variable_type::type_time) {
@@ -317,17 +318,17 @@ struct field2str {
    *   представлению
    * */
   template <class T, class U = pass<std::string>>
-  static std::string translate(const std::vector<T>& c,
-                               db_variable_type,
-                               U to_str = U()) {
+  std::string translate(const std::vector<T>& c,
+                        db_variable_type,
+                        U to_str = U()) {
     return TranslateFromVector(c.begin(), c.end(), to_str);
   }
-  static std::string translate(const std::string& val, db_variable_type) {
+  std::string translate(const std::string& val, db_variable_type) {
     // todo: возможно здесь общий конвертер `строка`->`строку`, но
     //   учитывающий специфику обрабатываемого типа значения БД
     return val;
   }
-  static std::string translate(const char* val, db_variable_type) {
+  std::string translate(const char* val, db_variable_type) {
     return std::string(val);
   }
 };
@@ -361,6 +362,7 @@ enum class db_reference_act {
 };
 // static_assert (0, "добавить нереализованные действия");
 
+/* db_reference */
 /**
  * \brief Структура содержащая параметры удалённого ключа
  * */

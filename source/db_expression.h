@@ -231,12 +231,20 @@ struct expression_node {
     right = std::make_shared<expression_node>(this, r);
   }
   void AddLeftNode(const std::shared_ptr<expression_node>& l) {
-    left = l;
-    left->parent = this;
+    if (l.get() != nullptr) {
+      left = l;
+      left->parent = this;
+    } else {
+      left = nullptr;
+    }
   }
   void AddRightNode(const std::shared_ptr<expression_node>& r) {
-    right = r;
-    right->parent = this;
+    if (r.get() != nullptr) {
+      right = r;
+      right->parent = this;
+    } else {
+      right = nullptr;
+    }
   }
   /**
    * \brief Собрать поддерево из 2 инициализированных поддеревьев и оператора
@@ -245,15 +253,31 @@ struct expression_node {
    * \param left Указатель на левый узел дерева условий
    * \param right Указатель на правый узел дерева условий
    *
-   * \return Указатель на новый узел, собранный по переданным данным
+   * \return Указатель на новый узел, собранный по переданным данным,
+   *   узел empty оператора, если оба узла пусты, или единственный не
+   *   пустой узел
    * */
   static std::shared_ptr<expression_node> AddCondition(
       const T& op,
       const std::shared_ptr<expression_node>& left,
       const std::shared_ptr<expression_node>& right) {
-    auto root = std::make_shared<expression_node>(nullptr, op);
-    root->AddLeftNode(left);
-    root->AddRightNode(right);
+    std::shared_ptr<expression_node> root = nullptr;
+    if ((left.get() != nullptr) && (right.get() != nullptr)) {
+      // если оба узла не пусты, создадим поддерево с корнем `op`
+      root = std::make_shared<expression_node>(nullptr, op);
+      root->AddLeftNode(left);
+      root->AddRightNode(right);
+    } else if ((left.get() == nullptr) && (right.get() == nullptr)) {
+      // если оба узла пусты
+      root = std::make_shared<expression_node>(
+          nullptr, db_operator_wrapper(db_operator_t::op_empty));
+    } else if (left.get() != nullptr) {
+      // не пуст только левый узел
+      root = left;
+    } else {
+      // не пуст только правый узел
+      root = right;
+    }
     return root;
   }
   /**
@@ -342,6 +366,16 @@ struct where_node_creator {
     result->CreateLeftNode(fname);
     result->AddRightNode(cond);
     return result;
+  }
+  /**
+   * \brief Создать узел дерева запросов который уже содержит в себе заданную
+   *   строку, которую необходимо просто добавить к остальному дереву
+   *
+   * \todo Доделать
+   * */
+  static std::shared_ptr<expression_node<T>> create_raw(
+      const std::string& raw_data) {
+    assert(0);
   }
 };
 // `like` or `not like`
