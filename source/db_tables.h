@@ -52,7 +52,6 @@
   }
 
 namespace asp_db {
-namespace wns = where_nodes_setup;
 #define UNDEFINED_TABLE 0x00000000
 #define UNDEFINED_COLUMN 0x00000000
 

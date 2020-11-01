@@ -436,6 +436,9 @@ struct where_node_creator<T, db_operator_t::op_between> {
 /**
  * \brief Класс инкапсулирующий функционал сбора выражения WHERE
  *
+ * \todo Заменить встречающийся далее тип `db_operator_wrapper`
+ *   на шаблонный тип
+ *
  * Шаблон валиден для типа where_node_data
  * */
 template <class T>
@@ -470,7 +473,7 @@ class DBWhereClause {
    *                         A   B
    * */
   mstatus_t AddCondition(db_operator_wrapper _op,
-                         std::shared_ptr<expression_node<T>>& condition) {
+                         const std::shared_ptr<expression_node<T>>& condition) {
     mstatus_t ret = STATUS_HAVE_ERROR;
     try {
       auto r = expression_node<T>::AddCondition(where_node_data(_op), root,
@@ -493,7 +496,8 @@ class DBWhereClause {
    * \brief Влить в текущее дерево другре поддерево DBWhereClause,
    *   разбив их оператором `op`
    * */
-  mstatus_t MergeWhereClause(db_operator_t _op, const DBWhereClause& wclause) {
+  mstatus_t MergeWhereClause(db_operator_wrapper _op,
+                             const DBWhereClause& wclause) {
     return AddCondition(_op, wclause.root);
   }
   /**
@@ -523,7 +527,7 @@ class DBWhereClause {
  * \brief Пространство имён создания деревьев условных выражений
  *   для составления where подстрок запросов
  * */
-namespace where_nodes_setup {
+namespace where_nodes {
 typedef std::shared_ptr<expression_node<where_node_data>> node_ptr;
 
 /* leaf nodes */
@@ -564,7 +568,7 @@ template <class... Tor>
 node_ptr node_or(const node_ptr& left, const node_ptr& right, Tor... _or) {
   return node_or(node_or(left, right), _or...);
 }
-}  // namespace where_nodes_setup
+}  // namespace where_nodes
 }  // namespace asp_db
 
 #endif  // !_DATABASE__DB_EXPRESSION_H_

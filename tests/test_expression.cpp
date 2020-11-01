@@ -5,7 +5,7 @@
 #include "db_append_functor.h"
 #include "db_expression.h"
 
-using namespace asp_db::where_nodes_setup;
+using namespace asp_db::where_nodes;
 using namespace asp_db;
 
 /* контейнеры */

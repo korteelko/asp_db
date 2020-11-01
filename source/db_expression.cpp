@@ -190,7 +190,7 @@ std::string expression_node<where_node_data>::GetString(
   expression_node<where_node_data>::AddCondition( \
       where_node_data(db_operator_t::op_##op), left, right);
 
-namespace where_nodes_setup {
+namespace where_nodes {
 node_ptr node_eq(const db_variable& var, const std::string& value) {
   return leaf_node_access(eq);
 }
@@ -243,5 +243,5 @@ node_ptr node_or(const node_ptr& left, const node_ptr& right) {
   return inner_node_access(or);
 }
 
-}  // namespace where_nodes_setup
+}  // namespace where_nodes
 }  // namespace asp_db

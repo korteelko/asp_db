@@ -17,12 +17,51 @@
 #include "db_tables.h"
 
 namespace asp_db {
+namespace wns = where_nodes;
 /**
  * \brief Класс сборки дерева условий where запроса
  * */
 class WhereTreeSetup {
  public:
   WhereTreeSetup(IDBTables* tables) : tables_(tables) {}
+
+  inline void Init(const wns::node_ptr& node) {
+    clause_ = std::make_shared<DBWhereClause<where_node_data>>(node);
+  }
+  /**
+   * \brief Наростить дерево другим поддеревом через `AND` узел
+   * */
+  inline void AddAnd(const wns::node_ptr& node) {
+    if (clause_.get() != nullptr)
+      clause_->AddCondition(db_operator_t::op_and, node);
+  }
+  /**
+   * \brief Наростить дерево другим поддеревом, через `AND` узлы
+   * */
+  template <class... Tand>
+  void AddAnd(wns::node_ptr& node, Tand... _and) {
+    if (clause_.get() != nullptr) {
+      clause_->AddCondition(db_operator_t::op_and, node);
+      AddAnd(_and...);
+    }
+  }
+
+  inline void AddOr(const wns::node_ptr& node) {
+    if (clause_.get() != nullptr)
+      clause_->AddCondition(db_operator_t::op_or, node);
+  }
+  template <class... Tor>
+  void AddOr(wns::node_ptr& node, Tor... _or) {
+    if (clause_.get() != nullptr) {
+      clause_->AddCondition(db_operator_t::op_or, node);
+      AddOr(_or...);
+    }
+  }
+
+  inline std::shared_ptr<DBWhereClause<where_node_data>> GetWhereTree() {
+    return clause_;
+  }
+
   /* nodes */
   /**
    * \brief Собрать поддерево условия проверки равенства значений
@@ -250,12 +289,14 @@ class WhereTreeSetup {
 
  private:
   /**
-   * \brief
+   * \brief Указатель на реализацию интерфейса таблиц
    *
    * Пространство таблиц, контекст так сказать, в котором обрабатываются
    * условия
    * */
   IDBTables* tables_;
+
+  std::shared_ptr<DBWhereClause<where_node_data>> clause_;
 };
 
 /* templates */
