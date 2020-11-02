@@ -13,17 +13,17 @@
 #include <assert.h>
 
 LibraryDBTables ldb;
-WhereTreeSetup adb(&ldb);
 
 TEST(db_where_tree, DBTableBetween) {
-  // todo: не прозрачна связь между параметром шаблона и id столбца
   // text field
-  auto between_t = adb.Between<table_book>(BOOK_TITLE, "a", "z");
+  WhereTreeSetup<table_book> adb(&ldb);
+  // todo: не прозрачна связь между параметром шаблона и id столбца
+  auto between_t = adb.Between(BOOK_TITLE, "a", "z");
   std::string btstr = std::string(BOOK_TITLE_NAME) + " between 'a' and 'z'";
   EXPECT_STRCASEEQ(between_t->GetString().c_str(), btstr.c_str());
 
   // int field
-  auto between_p = adb.Between<table_book>(BOOK_PUB_YEAR, 1920, 1985);
+  auto between_p = adb.Between(BOOK_PUB_YEAR, 1920, 1985);
   std::string bpstr =
       std::string(BOOK_PUB_YEAR_NAME) + " between 1920 and 1985";
   EXPECT_STRCASEEQ(between_p->GetString().c_str(), bpstr.c_str());
@@ -31,17 +31,19 @@ TEST(db_where_tree, DBTableBetween) {
 }
 
 TEST(db_where_tree, DBTable2Operations) {
-  auto eq_t = adb.Eq<table_author>(AUTHOR_NAME, "Leo Tolstoy");
+  WhereTreeSetup<table_author> adb(&ldb);
+  auto eq_t = adb.Eq(AUTHOR_NAME, "Leo Tolstoy");
   std::string eqtstr = std::string(AUTHOR_NAME_NAME) + " = 'Leo Tolstoy'";
   EXPECT_STRCASEEQ(eq_t->GetString().c_str(), eqtstr.c_str());
   // todo: add cases for other operators
 }
 
 TEST(db_where_tree, DBTableAnd) {
-  auto eq_t1 = adb.Eq<table_book>(BOOK_TITLE, "Hobbit");
+  WhereTreeSetup<table_book> adb(&ldb);
+  auto eq_t1 = adb.Eq(BOOK_TITLE, "Hobbit");
   // todo: how about instatnces for enums???
-  auto eq_t2 = adb.Eq<table_book>(BOOK_LANG, (int)lang_eng);
-  auto gt_t3 = adb.Gt<table_book>(BOOK_PUB_YEAR, 1900);
+  auto eq_t2 = adb.Eq(BOOK_LANG, (int)lang_eng);
+  auto gt_t3 = adb.Gt(BOOK_PUB_YEAR, 1900);
 
   // check
   //   and1
@@ -66,7 +68,7 @@ TEST(db_where_tree, DBTableAnd) {
   // check nullptr
   // and4
   wns::node_ptr null_t4 = nullptr;
-  eq_t1 = adb.Eq<table_book>(BOOK_TITLE, "Hobbit");
+  eq_t1 = adb.Eq(BOOK_TITLE, "Hobbit");
   auto and4 = adb.And(eq_t1, null_t4);
   std::string and4_s = std::string(BOOK_TITLE_NAME) + " = 'Hobbit'";
   EXPECT_STRCASEEQ(and4->GetString().c_str(), and4_s.c_str());
@@ -79,18 +81,16 @@ TEST(db_where_tree, DBTableAnd) {
 
 TEST(WhereTreeSetup, Init) {
   WhereTree wt;
-  WhereTreeSetup ts(&ldb);
-  wt.Init(ts.And(ts.Ge<table_translation>(TRANS_ID, 3),
-                 ts.Lt<table_translation>(TRANS_ID, 10),
-                 ts.Eq<table_translation>(TRANS_LANG, int(lang_rus))));
+  WhereTreeSetup<table_translation> ts(&ldb);
+  wt.Init(ts.And(ts.Ge(TRANS_ID, 3), ts.Lt(TRANS_ID, 10),
+                 ts.Eq(TRANS_LANG, int(lang_rus))));
   // проверим результат инициализации
   std::string wts = std::string("((") + TRANS_ID_NAME + " >= 3) AND (" +
                     TRANS_ID_NAME + " < 10)) AND (" + TRANS_LANG_NAME + " = " +
                     std::to_string(int(lang_rus)) + ")";
   EXPECT_STRCASEEQ(wt.GetWhereTree()->GetString().c_str(), wts.c_str());
   // продолжим
-  wt.AddOr(ts.And(ts.Gt<table_translation>(TRANS_ID, 13),
-                  ts.Lt<table_translation>(TRANS_ID, 15)));
+  wt.AddOr(ts.And(ts.Gt(TRANS_ID, 13), ts.Lt(TRANS_ID, 15)));
   // снова проверим
   std::string wfs = std::string("(((") + TRANS_ID_NAME + " >= 3) AND (" +
                     TRANS_ID_NAME + " < 10)) AND (" + TRANS_LANG_NAME + " = " +
