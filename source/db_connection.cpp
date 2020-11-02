@@ -169,20 +169,22 @@ std::stringstream DBConnection::setupInsertString(
 std::stringstream DBConnection::setupDeleteString(
     const db_query_delete_setup& fields) {
   std::stringstream sstr;
-  if (fields.where_condition != nullptr) {
+  auto ws = fields.GetWhereString();
+  if (ws != std::nullopt) {
     sstr << "DELETE FROM " << tables_->GetTableName(fields.table) << " WHERE "
-         << fields.where_condition->GetString() << ";";
+         << ws.value() << ";";
   } else {
     sstr << "DELETE * FROM " << tables_->GetTableName(fields.table) << ";";
   }
   return sstr;
-}
+}  // namespace asp_db
 std::stringstream DBConnection::setupSelectString(
     const db_query_select_setup& fields) {
   std::stringstream sstr;
   sstr << "SELECT * FROM " << tables_->GetTableName(fields.table);
-  if (fields.where_condition != nullptr)
-    sstr << " WHERE " << fields.where_condition->GetString();
+  auto ws = fields.GetWhereString();
+  if (ws != std::nullopt)
+    sstr << " WHERE " << ws.value();
   sstr << ";";
   return sstr;
 }
@@ -197,8 +199,9 @@ std::stringstream DBConnection::setupUpdateString(
           std::string(fields.fields[x.first].fname) + " = " + x.second + ",";
     set_str[set_str.size() - 1] = ' ';
     sstr << set_str;
-    if (fields.where_condition != nullptr)
-      sstr << " WHERE " << fields.where_condition->GetString();
+    auto ws = fields.GetWhereString();
+    if (ws != std::nullopt)
+      sstr << " WHERE " << ws.value();
     sstr << ";";
   }
   return sstr;

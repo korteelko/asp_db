@@ -10,7 +10,7 @@
 #include "db_expression.h"
 #include "Logging.h"
 
-#include <stack>
+#include <future>
 
 namespace asp_db {
 std::string DataFieldToStr(db_variable_type t, const std::string& v) {
@@ -195,11 +195,19 @@ std::string expression_node<where_node_data>::GetString(
     throw db_variable_exception(
         "Не обрабатываемый тип данных для where_node_data");
   }
-  if (left.get())
-    l = left->GetString(dts);
-  if (right.get())
-    r = right->GetString(dts);
-  return (braced) ? "(" + l + result + r + ")" : l + result + r;
+  std::array<std::future<std::string>, 2> get_str{
+      std::async(std::launch::async,
+                 [&]() {
+                   return (left.get() != nullptr) ? left->GetString(dts)
+                                                  : std::string();
+                 }),
+      std::async(std::launch::async, [&]() {
+        return (right.get() != nullptr) ? right->GetString(dts) : std::string();
+      })};
+  std::string ans = get_str[0].get() + result + get_str[1].get();
+  if (braced)
+    ans = "(" + ans + ")";
+  return ans;
 }
 /**
  * \brief Макрос регистрирующий функцию инициализации узлов дерева запросов

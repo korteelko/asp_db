@@ -685,11 +685,9 @@ std::stringstream DBConnectionPostgre::setupDeleteString(
   std::stringstream sstr;
   postgresql_impl::where_string_set ws(pqxx_work.GetTransaction());
   sstr << "DELETE FROM " << tables_->GetTableName(fields.table);
-  std::string str = "";
-  if (fields.where_condition != nullptr)
-    str = fields.where_condition->GetString(ws);
-  if (!trim_str(str).empty())
-    sstr << " WHERE " << str;
+  auto wstr = fields.GetWhereString();
+  if (wstr != std::nullopt)
+    sstr << " WHERE " << wstr.value();
   sstr << ";";
   return sstr;
 }
@@ -698,11 +696,9 @@ std::stringstream DBConnectionPostgre::setupSelectString(
   std::stringstream sstr;
   postgresql_impl::where_string_set ws(pqxx_work.GetTransaction());
   sstr << "SELECT * FROM " << tables_->GetTableName(fields.table);
-  std::string str = "";
-  if (fields.where_condition != nullptr)
-    str = fields.where_condition->GetString(ws);
-  if (!trim_str(str).empty())
-    sstr << " WHERE " << str;
+  auto wstr = fields.GetWhereString();
+  if (wstr != std::nullopt)
+    sstr << " WHERE " << wstr.value();
   sstr << ";";
   return sstr;
 }
@@ -718,11 +714,9 @@ std::stringstream DBConnectionPostgre::setupUpdateString(
           std::string(fields.fields[x.first].fname) + " = " + x.second + ",";
     set_str[set_str.size() - 1] = ' ';
     sstr << set_str;
-    std::string str = "";
-    if (fields.where_condition != nullptr)
-      str = fields.where_condition->GetString(ws);
-    if (!trim_str(str).empty())
-      sstr << " WHERE " << str;
+    auto wstr = fields.GetWhereString();
+    if (wstr != std::nullopt)
+      sstr << " WHERE " << wstr.value();
     sstr << ";";
   }
   return sstr;

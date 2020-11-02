@@ -220,6 +220,8 @@ class DBConnectionManager {
 
   /**
    * \brief Собрать запрос на выборку данных
+   *
+   * \todo удолить(зоменить вход)
    * */
   template <class DataT>
   mstatus_t selectData(db_table t, const DataT& where, std::vector<DataT>* res);
@@ -404,7 +406,7 @@ mstatus_t DBConnectionManager::DeleteRows(TableI& where) {
   std::unique_ptr<db_query_delete_setup> dds(
       db_query_delete_setup::Init(tables_, tables_->GetTableCode<TableI>()));
   if (dds)
-    tables_->InitInsertTree<TableI>(where).swap(dds->where_condition);
+    dds->ResetWhereClause(tables_->InitInsertTree<TableI>(where));
   db_save_point sp("delete_rows");
   return exec_wrap<const db_query_delete_setup&, void,
                    void (DBConnectionManager::*)(
@@ -457,7 +459,7 @@ mstatus_t DBConnectionManager::selectData(db_table t,
   std::unique_ptr<db_query_select_setup> dss(
       db_query_select_setup::Init(tables_, t));
   if (dss)
-    tables_->InitInsertTree<DataT>(where).swap(dss->where_condition);
+    dss->ResetWhereClause(tables_->InitInsertTree<DataT>(where));
   db_query_select_result result(*dss);
   auto st = exec_wrap<const db_query_select_setup&, db_query_select_result,
                       void (DBConnectionManager::*)(

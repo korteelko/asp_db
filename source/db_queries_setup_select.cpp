@@ -18,6 +18,17 @@ db_query_select_setup* db_query_select_setup::Init(const IDBTables* tables,
                                    *tables->GetFieldsCollection(_table));
 }
 
+void db_query_select_setup::ResetWhereClause(
+    const std::shared_ptr<DBWhereClause<where_node_data> >& where) {
+  where_ = where;
+}
+
+std::optional<std::string> db_query_select_setup::GetWhereString() const {
+  return (where_.get() != nullptr)
+             ? std::optional<std::string>{where_->GetString()}
+             : std::nullopt;
+}
+
 db_query_select_setup::db_query_select_setup(
     db_table _table,
     const db_fields_collection& _fields)

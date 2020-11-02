@@ -2,7 +2,8 @@
  * asp_therm - implementation of real gas equations of state
  * ===================================================================
  * * db_queries_setup_select *
- *   Модуль сборки запросов выборки
+ *   Модуль сборки запросов выборки, удаления, обновления таблиц
+ * данных в БД
  * ===================================================================
  *
  * Copyright (c) 2020 Mishutinski Yurii
@@ -16,6 +17,8 @@
 #include "db_expression.h"
 #include "db_queries_setup.h"
 
+#include <optional>
+
 namespace asp_db {
 /**
  * \brief Структура для сборки SELECT(и DELETE) запросов
@@ -25,15 +28,34 @@ struct db_query_select_setup : public db_query_basesetup {
   static db_query_select_setup* Init(const IDBTables* tables, db_table _table);
 
   virtual ~db_query_select_setup() = default;
-
- public:
   /**
-   * \brief Сетап выражения where для SELECT/UPDATE/DELETE запросов
+   * \brief Попробовать сменить выражение условий
    * */
-  std::shared_ptr<DBWhereClause<where_node_data>> where_condition;
+  void ResetWhereClause(
+      const std::shared_ptr<DBWhereClause<where_node_data>>& where);
+  /**
+   * \brief Получить строку запроса where
+   *
+   * \return Строку where условия или nullObject, если DBWhereClause
+   * не проинициализировано(если оно пустое, то вернёт пустую строку)
+   * */
+  std::optional<std::string> GetWhereString() const;
+
+  bool IsActToAll() const { return act2all_; }
+  void SetActAll(bool value) { act2all_ = value; }
 
  protected:
   db_query_select_setup(db_table _table, const db_fields_collection& _fields);
+
+ protected:
+  /**
+   * \brief Сетап выражения where для SELECT/UPDATE/DELETE запросов
+   * */
+  std::shared_ptr<DBWhereClause<where_node_data>> where_ = nullptr;
+  /**
+   * \brief Применить операцию ко всемданным таблицы
+   * */
+  bool act2all_ = false;
 };
 /**
  * \brief псевдоним DELETE запросов

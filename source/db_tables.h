@@ -16,7 +16,6 @@
 
 #include "db_defines.h"
 #include "db_queries_setup.h"
-#include "db_queries_setup_select.h"
 
 #include <algorithm>
 #include <exception>
@@ -197,7 +196,7 @@ class IDBTables {
    * \param out_vec Указатель на вектор выходных результатов
    * */
   template <class TableI>
-  void SetSelectData(db_query_select_result* src,
+  void SetSelectData(struct db_query_select_result* src,
                      std::vector<TableI>* out_vec) const;
   /**
    * \brief Собрать дерево условий insert запроса по данным
