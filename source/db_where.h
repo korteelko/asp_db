@@ -24,18 +24,29 @@ namespace wns = where_nodes;
  * \tparam table Идентификатор таблицы под которую собирается where запрос
  * */
 template <db_table table>
-class WhereTreeSetup {
+class WhereTreeConstructor {
  public:
-  WhereTreeSetup(IDBTables* tables) : tables_(tables) {}
+  WhereTreeConstructor(IDBTables* tables) : tables_(tables) {}
+
+  /**
+   * \brief Получить идентификатор таблицы, для которой
+   *   инстанциирован данный объект
+   *
+   * \return Идентификатор таблицы
+   * */
+  db_table GetTableId() const { return table; }
+  /**
+   * \brief Получить указатель на пространство таблиц
+   *
+   * \return Указатель на пространство таблиц
+   * */
+  IDBTables* GetTables() const { return tables_; }
 
   /* nodes */
   /**
-   * \brief Собрать поддерево условия проверки равенства значений
-   * \tparam t Идентификатор таблицы
-   * \tparam tVal Тип значения
+   * \brief Собрать поддерево уже отформатированных данных
    *
-   * \param field_id Идентификатор поля
-   * \param val Сравниваемое значение
+   * \param raw Отформатированные данные
    *
    * \return Узел дерева запросов
    * */
@@ -44,7 +55,7 @@ class WhereTreeSetup {
   }
   /**
    * \brief Собрать поддерево условия проверки равенства значений
-   * \tparam t Идентификатор таблицы
+   *
    * \tparam tVal Тип значения
    *
    * \param field_id Идентификатор поля
@@ -58,7 +69,7 @@ class WhereTreeSetup {
   }
   /**
    * \brief Собрать поддерево условия проверки равенства значений
-   * \tparam t Идентификатор таблицы
+   *
    * \tparam tVal Тип значения
    *
    * \param field_id Идентификатор поля
@@ -74,7 +85,7 @@ class WhereTreeSetup {
   }
   /**
    * \brief Собрать поддерево условия проверки неравенства значений
-   * \tparam t Идентификатор таблицы
+   *
    * \tparam tVal Тип значения
    *
    * \param field_id Идентификатор поля
@@ -88,7 +99,7 @@ class WhereTreeSetup {
   }
   /**
    * \brief Собрать поддерево условия проверки условия `больше или равно`
-   * \tparam t Идентификатор таблицы
+   *
    * \tparam tVal Тип значения
    *
    * \param field_id Идентификатор поля
@@ -102,7 +113,7 @@ class WhereTreeSetup {
   }
   /**
    * \brief Собрать поддерево условия проверки условия `строго больше`
-   * \tparam t Идентификатор таблицы
+   *
    * \tparam tVal Тип значения
    *
    * \param field_id Идентификатор поля
@@ -116,7 +127,7 @@ class WhereTreeSetup {
   }
   /**
    * \brief Собрать поддерево условия проверки условия `меньше или равно`
-   * \tparam t Идентификатор таблицы
+   *
    * \tparam tVal Тип значения
    *
    * \param field_id Идентификатор поля
@@ -130,7 +141,7 @@ class WhereTreeSetup {
   }
   /**
    * \brief Собрать поддерево условия проверки условия `строго меньше`
-   * \tparam t Идентификатор таблицы
+   *
    * \tparam tVal Тип значения
    *
    * \param field_id Идентификатор поля
@@ -146,7 +157,6 @@ class WhereTreeSetup {
    * \brief Шаблон функции собирающей узлы `Like` операций для where
    *   условий.
    *
-   * \tparam t Тип таблицы
    * \tparam Tval Тип данных
    *
    * \param field_id Идентификатор обновляемого поля
@@ -161,8 +171,6 @@ class WhereTreeSetup {
   /**
    * \brief Шаблон функции собирающей узлы `Like` операций для where
    *   условий.
-   *
-   * \tparam t Тип таблицы
    *
    * \param field_id Идентификатор обновляемого поля
    * \param val Значение
@@ -179,7 +187,6 @@ class WhereTreeSetup {
    * \brief Шаблон функции собирающей узлы `Between` операций для where
    *   условий.
    *
-   * \tparam t Тип таблицы
    * \tparam Tval Тип данных
    *
    * \param field_id Идентификатор обновляемого поля
@@ -278,9 +285,9 @@ class WhereTreeSetup {
 /* templates */
 template <db_table table>
 template <class Tval>
-wns::node_ptr WhereTreeSetup<table>::Like(db_variable_id field_id,
-                                          const char* val,
-                                          bool inverse) const {
+wns::node_ptr WhereTreeConstructor<table>::Like(db_variable_id field_id,
+                                                const char* val,
+                                                bool inverse) const {
   wns::node_ptr like = nullptr;
   try {
     if (tables_) {
@@ -297,10 +304,10 @@ wns::node_ptr WhereTreeSetup<table>::Like(db_variable_id field_id,
 
 template <db_table table>
 template <class Tval>
-wns::node_ptr WhereTreeSetup<table>::Between(db_variable_id field_id,
-                                             const Tval& min,
-                                             const Tval& max,
-                                             bool inverse) const {
+wns::node_ptr WhereTreeConstructor<table>::Between(db_variable_id field_id,
+                                                   const Tval& min,
+                                                   const Tval& max,
+                                                   bool inverse) const {
   wns::node_ptr between = nullptr;
   try {
     if (tables_) {
@@ -317,7 +324,7 @@ wns::node_ptr WhereTreeSetup<table>::Between(db_variable_id field_id,
 }
 template <db_table table>
 template <class Tval>
-wns::node_ptr WhereTreeSetup<table>::node_bind(
+wns::node_ptr WhereTreeConstructor<table>::node_bind(
     db_variable_id field_id,
     const Tval& val,
     std::function<wns::node_ptr(const db_variable&, const std::string&)>
@@ -343,8 +350,11 @@ wns::node_ptr WhereTreeSetup<table>::node_bind(
 template <db_table table>
 class WhereTree {
  public:
+  WhereTree(WhereTreeConstructor<table> constructor)
+      : constructor_(constructor) {}
+
   void Init(const wns::node_ptr& node) {
-    clause_ = std::make_shared<DBWhereClause<where_node_data, table>>(node);
+    clause_ = std::make_shared<DBWhereClause<where_node_data>>(node);
   }
   /**
    * \brief Наростить дерево другим поддеревом через `AND` узел
@@ -383,12 +393,16 @@ class WhereTree {
   /**
    * \brief Получить собранное дерево
    * */
-  std::shared_ptr<DBWhereClause<where_node_data, table>> GetWhereTree() {
+  const std::shared_ptr<DBWhereClause<where_node_data>> GetWhereTree() const {
     return clause_;
   }
+  const IDBTables* GetTables() const { return constructor_.GetTables(); }
 
  private:
-  std::shared_ptr<DBWhereClause<where_node_data, table>> clause_;
+  /// Конструктор дерева выражений whereTree
+  WhereTreeConstructor<table> constructor_;
+  /// Дерево выражений
+  std::shared_ptr<DBWhereClause<where_node_data>> clause_;
 };
 }  // namespace asp_db
 #endif  // !_DATABASE__DB_WHERE_H_

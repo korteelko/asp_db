@@ -12,16 +12,6 @@
 
 namespace asp_db {
 /* db_table_select_setup */
-db_query_select_setup* db_query_select_setup::Init(const IDBTables* tables,
-                                                   db_table _table) {
-  return new db_query_select_setup(_table,
-                                   *tables->GetFieldsCollection(_table));
-}
-
-void db_query_select_setup::ResetWhereClause(
-    const std::shared_ptr<DBWhereClause<where_node_data> >& where) {
-  where_ = where;
-}
 
 std::optional<std::string> db_query_select_setup::GetWhereString() const {
   return (where_.get() != nullptr)
@@ -31,13 +21,17 @@ std::optional<std::string> db_query_select_setup::GetWhereString() const {
 
 db_query_select_setup::db_query_select_setup(
     db_table _table,
-    const db_fields_collection& _fields)
-    : db_query_basesetup(_table, _fields) {}
+    const db_fields_collection& _fields,
+    const std::shared_ptr<DBWhereClause<where_node_data> >& where,
+    bool act2all)
+    : db_query_basesetup(_table, _fields), where_(where), act2all_(act2all) {}
 
 db_query_update_setup::db_query_update_setup(
     db_table _table,
     const db_fields_collection& _fields)
-    : db_query_select_setup(_table, _fields) {}
+    : db_query_select_setup(_table, _fields, nullptr, false) {
+  assert(0);
+}
 
 /* db_table_select_result */
 db_query_select_result::db_query_select_result(

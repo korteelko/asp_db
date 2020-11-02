@@ -16,7 +16,7 @@ LibraryDBTables ldb;
 
 TEST(db_where_tree, DBTableBetween) {
   // text field
-  WhereTreeSetup<table_book> adb(&ldb);
+  WhereTreeConstructor<table_book> adb(&ldb);
   // todo: не прозрачна связь между параметром шаблона и id столбца
   auto between_t = adb.Between(BOOK_TITLE, "a", "z");
   std::string btstr = std::string(BOOK_TITLE_NAME) + " between 'a' and 'z'";
@@ -31,7 +31,7 @@ TEST(db_where_tree, DBTableBetween) {
 }
 
 TEST(db_where_tree, DBTable2Operations) {
-  WhereTreeSetup<table_author> adb(&ldb);
+  WhereTreeConstructor<table_author> adb(&ldb);
   auto eq_t = adb.Eq(AUTHOR_NAME, "Leo Tolstoy");
   std::string eqtstr = std::string(AUTHOR_NAME_NAME) + " = 'Leo Tolstoy'";
   EXPECT_STRCASEEQ(eq_t->GetString().c_str(), eqtstr.c_str());
@@ -39,7 +39,7 @@ TEST(db_where_tree, DBTable2Operations) {
 }
 
 TEST(db_where_tree, DBTableAnd) {
-  WhereTreeSetup<table_book> adb(&ldb);
+  WhereTreeConstructor<table_book> adb(&ldb);
   auto eq_t1 = adb.Eq(BOOK_TITLE, "Hobbit");
   // todo: how about instatnces for enums???
   auto eq_t2 = adb.Eq(BOOK_LANG, (int)lang_eng);
@@ -79,9 +79,9 @@ TEST(db_where_tree, DBTableAnd) {
   EXPECT_STRCASEEQ(and5->GetString().c_str(), "");
 }
 
-TEST(WhereTreeSetup, Init) {
-  WhereTree wt;
-  WhereTreeSetup<table_translation> ts(&ldb);
+TEST(WhereTreeConstructor, Init) {
+  WhereTreeConstructor<table_translation> ts(&ldb);
+  WhereTree<table_translation> wt(ts);
   wt.Init(ts.And(ts.Ge(TRANS_ID, 3), ts.Lt(TRANS_ID, 10),
                  ts.Eq(TRANS_LANG, int(lang_rus))));
   // проверим результат инициализации

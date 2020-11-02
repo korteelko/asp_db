@@ -86,11 +86,11 @@ int add_data(DBConnectionManager& dbm) {
   // удалить все существующие данные
   std::vector<book> db_books;
   // get already exists books
-  dbm.SelectRows(b, &db_books);
+  dbm.SelectAllRows(table_book, &db_books);
   for (const auto& x : db_books)
     Logging::Append(io_loglvl::info_logs, to_str(x));
   if (db_books.size())
-    dbm.DeleteRows(b);
+    dbm.DeleteAllRows(table_book);
   mstatus_t st = dbm.SaveSingleRow(divine_comedy, &divine_comedy.id);
   if (is_status_ok(st)) {
     id_container ids;
@@ -116,10 +116,7 @@ int add_data(DBConnectionManager& dbm) {
   translation_construct(ulysses_ru, -1, lang_rus, ulysses,
                         "Хинкис В.А., Хоружий С.С.", "Улисс",
                         translation::f_full & ~translation::f_id);
-  translation t;
-  t.initialized = 0;
-  // todo: swap to DeleteAll, see issue #16
-  dbm.DeleteRows(t);
+  dbm.DeleteAllRows(table_translation);
   st = dbm.SaveVectorOfRows(trans);
 
   // авторы
@@ -138,29 +135,30 @@ int add_data(DBConnectionManager& dbm) {
   author_construct(joyce, -1, "James Augustine Aloysius Joyce", 1882, 1941,
                    author::f_full & ~author::f_id, ulysses.title);
 
-  author a;
-  a.initialized = 0;
-  dbm.DeleteRows(a);
+  dbm.DeleteAllRows(table_author);
   st = dbm.SaveVectorOfRows(aths);
 
   /* select authors */
-  author lt;
-  lt.name = tolstoy.name;
-  lt.initialized |= author::f_name;
   std::vector<author> slt;
-  dbm.SelectRows(lt, &slt);
+
+  LibraryDBTables ldb;
+  WhereTreeConstructor<table_author> c(&ldb);
+  WhereTree wt(c);
+  wt.Init(c.Eq(AUTHOR_NAME, tolstoy.name));
+
+  dbm.SelectRows(wt, &slt);
   if (slt.size()) {
     Logging::Append(io_loglvl::info_logs,
                     "В БД храниться информация о "
                     "нескольких книгах '" +
-                        lt.name + "'\n\t");
+                        tolstoy.name + "'\n\t");
     for (const auto& book : slt[0].books)
       Logging::Append(io_loglvl::info_logs, book);
     Logging::Append(io_loglvl::info_logs, join_container(slt[0].books, ", "));
   } else {
     Logging::Append(
         io_loglvl::info_logs,
-        "Не могу найти в таблице авторов писателя '" + lt.name + "'");
+        "Не могу найти в таблице авторов писателя '" + tolstoy.name + "'");
   }
 
   return is_status_ok(st);

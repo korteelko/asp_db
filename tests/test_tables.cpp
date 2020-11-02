@@ -60,6 +60,7 @@ TEST_F(DatabaseTablesTest, TableExists) {
  * \brief Тест на добавлени книг к таблице моделей
  * */
 TEST_F(DatabaseTablesTest, InsertBooks) {
+  WhereTreeConstructor<table_book> c(&adb_);
   std::string str = "string by gtest";
   /* insert */
   book divine_comedy;
@@ -69,15 +70,19 @@ TEST_F(DatabaseTablesTest, InsertBooks) {
   // дата завершения
   divine_comedy.first_pub_year = 1320;
   divine_comedy.initialized = book::f_full & ~book::f_id;
+  WhereTree wt1(c);
+  wt1.Init(c.And(c.Eq(BOOK_LANG, int(lang_ita)),
+                 c.Eq(BOOK_TITLE, "Divina Commedia"),
+                 c.Eq(BOOK_PUB_YEAR, 1320)));
   /* Удалим строку если она уже есть */
-  auto st = dbm_.DeleteRows(divine_comedy);
+  auto st = dbm_.DeleteRows(wt1);
   int dc_id = -1;
   st = dbm_.SaveSingleRow(divine_comedy, &dc_id);
   EXPECT_GE(dc_id, 0);
 
   /* select */
   std::vector<book> r;
-  dbm_.SelectRows(divine_comedy, &r);
+  dbm_.SelectRows(wt1, &r);
 
   ASSERT_TRUE(r.size() > 0);
   EXPECT_GT(r[0].id, 0);
@@ -88,13 +93,14 @@ TEST_F(DatabaseTablesTest, InsertBooks) {
   /* delete */
   book dc_del;
   dc_del.id = r[0].id;
-  dc_del.initialized = dc_del.f_id;
-  st = dbm_.DeleteRows(dc_del);
+  WhereTree wt2(c);
+  wt2.Init(c.Eq(BOOK_ID, dc_del.id));
+  st = dbm_.DeleteRows(wt2);
   ASSERT_TRUE(is_status_ok(st));
 
   /* check delete */
   r.clear();
-  st = dbm_.SelectRows(divine_comedy, &r);
+  st = dbm_.SelectRows(wt1, &r);
   EXPECT_TRUE(r.empty());
   ASSERT_TRUE(is_status_ok(st));
 }

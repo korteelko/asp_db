@@ -158,9 +158,63 @@ class DBConnectionManager {
   mstatus_t SaveNotExistsRows(const std::vector<TableI>& tis,
                               id_container* id_vec_p = nullptr);
   /* select operations */
-  /** \brief Вытащить из БД строки TableI по условиям из 'where' */
-  template <class TableI, class ContainerT = std::vector<TableI>>
-  mstatus_t SelectRows(const TableI& where, ContainerT* res);
+  /**
+   * \brief Вытащить из БД строки TableI по условиям из 'where',
+   *   результаты записать в вектор res
+   *
+   * \tparam table Идентификатор таблицы
+   * \tparam TableI Структура, реализующая таблицу данных
+   *
+   * \param where Дерево условий выборки
+   * \param res Вектор выходных результатов в формате структуры,
+   *   реализующей таблицу данных
+   *
+   * \return Статус выполнения команды
+   * */
+  template <db_table table, class TableI>
+  mstatus_t SelectRows(WhereTree<table>& where, std::vector<TableI>* res) {
+    std::shared_ptr<db_query_select_setup> dss(
+        db_query_select_setup::Init(where));
+    return selectRowsImp<TableI>(dss, res);
+  }
+  /**
+   * \brief Вытащить из БД все строки TableI
+   *
+   * \tparam TableI Структура, реализующая таблицу данных
+   *
+   * \param table Идентификатор таблицы
+   * \param res Вектор выходных результатов в формате структуры,
+   *   реализующей таблицу данных
+   *
+   * \return Статус выполнения команды
+   * */
+  template <class TableI>
+  mstatus_t SelectAllRows(db_table table, std::vector<TableI>* res) {
+    auto dss = db_query_select_setup::Init(tables_, table, true);
+    return selectRowsImp<TableI>(dss, res);
+  }
+  /**
+   * \brief Удалить строки таблицы соответствующие инициализированным
+   *   в аргументе метода - объекте where
+   *
+   * \tparam table Идентификатор таблицы
+   *
+   * \param where Дерево WHERE условий
+   *
+   * \return Результат выполнения операции
+   * */
+  template <db_table table>
+  mstatus_t DeleteRows(WhereTree<table>& where) {
+    std::shared_ptr<db_query_delete_setup> dds(
+        db_query_delete_setup::Init(where));
+    return deleteRowsImp(dds);
+  }
+  /**
+   * \brief Удалить все строки таблицы `table`
+   *
+   * \param table Идентификатор таблицы
+   * */
+  mstatus_t DeleteAllRows(db_table table);
 
   /* table format */
   /**
@@ -172,23 +226,6 @@ class DBConnectionManager {
    * \brief Обновить формат таблицы
    * */
   mstatus_t UpdateTableFormat(db_table dt);
-  /**
-   * \brief Удалить строки таблицы соответствующие инициализированным
-   *   в аргументе метода - объекте where
-   * \tparam TableI C++ структура-обвязка над таблицой БД
-   * \param where Структура с инициализированными полями
-   *
-   * Метод собирает where выражение вида
-   *   `FIELD_NAME(where.a) EQ "to_str(where.a)" AND
-   *       FIELD_NAME(where.b) EQ "to_str(where.b)" ...`,
-   * где where.a и where.b - поля структуры where,
-   * FIELD_NAME(x) - функция получения соответсвующего `x`
-   *     имени поля в таблице БД.
-   * */
-  template <class TableI>
-  mstatus_t DeleteRows(TableI& where);
-  /** \brief Удалить строки */
-  // mstatus_t DeleteModelInfo(model_info &where);
 
   mstatus_t GetStatus();
   merror_t GetError();
@@ -199,15 +236,32 @@ class DBConnectionManager {
   typedef DBConnectionManager::DBConnectionCreator ConnectionCreator;
 
  private:
-  /** \brief Обёртка над функционалом сбора и выполнения транзакции:
+  template <class TableI>
+  mstatus_t selectRowsImp(std::shared_ptr<db_query_select_setup>& dss,
+                          std::vector<TableI>* res) {
+    db_query_select_result result(*dss);
+    auto st = exec_wrap<const db_query_select_setup&, db_query_select_result,
+                        void (DBConnectionManager::*)(
+                            Transaction*, const db_query_select_setup&,
+                            db_query_select_result*)>(
+        *dss, &result, &DBConnectionManager::selectRows, nullptr);
+    if (is_status_ok(st))
+      tables_->SetSelectData(&result, res);
+    return st;
+  }
+  mstatus_t deleteRowsImp(std::shared_ptr<db_query_delete_setup>& dds);
+  /**
+   * \brief Обёртка над функционалом сбора и выполнения транзакции:
    *   подключение, создание точки сохранения
    * \param DataT data входные данные
    * \param OutT res указатель на выходные данные
    * \param SetupQueryF setup_m метод на добавление
    *   специализированного запроса(Query) к транзакции
    * \param sp_ptr указатель на сетап точки сохранения
+   *
    * \todo Слишком много шаблонных параметров получается,
-   *   не очень красиво смотрится */
+   *   не очень красиво смотрится
+   * */
   template <class DataT, class OutT, class SetupQueryF>
   mstatus_t exec_wrap(DataT data,
                       OutT* res,
@@ -218,13 +272,6 @@ class DBConnectionManager {
    * */
   void initDBConnection();
 
-  /**
-   * \brief Собрать запрос на выборку данных
-   *
-   * \todo удолить(зоменить вход)
-   * */
-  template <class DataT>
-  mstatus_t selectData(db_table t, const DataT& where, std::vector<DataT>* res);
   /* добавить в транзакцию соответствующий запрос */
   /** \brief Запрос сушествования таблицы */
   void isTableExist(Transaction* tr, db_table dt, bool* is_exists);
@@ -395,24 +442,6 @@ mstatus_t DBConnectionManager::SaveNotExistsRows(const std::vector<TableI>& tis,
   return st;
 }
 
-template <class TableI, class ContainerT = std::vector<TableI>>
-mstatus_t DBConnectionManager::SelectRows(const TableI& where,
-                                          ContainerT* res) {
-  return selectData(tables_->GetTableCode<TableI>(), where, res);
-}
-
-template <class TableI>
-mstatus_t DBConnectionManager::DeleteRows(TableI& where) {
-  std::unique_ptr<db_query_delete_setup> dds(
-      db_query_delete_setup::Init(tables_, tables_->GetTableCode<TableI>()));
-  if (dds)
-    dds->ResetWhereClause(tables_->InitInsertTree<TableI>(where));
-  db_save_point sp("delete_rows");
-  return exec_wrap<const db_query_delete_setup&, void,
-                   void (DBConnectionManager::*)(
-                       Transaction*, const db_query_delete_setup&, void*)>(
-      *dds, nullptr, &DBConnectionManager::deleteRows, &sp);
-}
 template <class DataT, class OutT, class SetupQueryF>
 mstatus_t DBConnectionManager::exec_wrap(DataT data,
                                          OutT* res,
@@ -451,24 +480,6 @@ mstatus_t DBConnectionManager::exec_wrap(DataT data,
     status_ = trans_st = STATUS_HAVE_ERROR;
   }
   return trans_st;
-}
-template <class DataT>
-mstatus_t DBConnectionManager::selectData(db_table t,
-                                          const DataT& where,
-                                          std::vector<DataT>* res) {
-  std::unique_ptr<db_query_select_setup> dss(
-      db_query_select_setup::Init(tables_, t));
-  if (dss)
-    dss->ResetWhereClause(tables_->InitInsertTree<DataT>(where));
-  db_query_select_result result(*dss);
-  auto st = exec_wrap<const db_query_select_setup&, db_query_select_result,
-                      void (DBConnectionManager::*)(
-                          Transaction*, const db_query_select_setup&,
-                          db_query_select_result*)>(
-      *dss, &result, &DBConnectionManager::selectRows, nullptr);
-  if (is_status_ok(st))
-    tables_->SetSelectData(&result, res);
-  return st;
 }
 
 }  // namespace asp_db

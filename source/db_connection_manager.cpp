@@ -146,6 +146,11 @@ mstatus_t DBConnectionManager::CreateTable(db_table dt) {
       dt, nullptr, &DBConnectionManager::createTable, &sp);
 }
 
+mstatus_t DBConnectionManager::DeleteAllRows(db_table table) {
+  auto dds = db_query_delete_setup::Init(tables_, table, true);
+  return deleteRowsImp(dds);
+}
+
 bool DBConnectionManager::CheckTableFormat(db_table dt) {
   db_table_create_setup cs_db(dt);
   mstatus_t result =
@@ -201,6 +206,15 @@ mstatus_t DBConnectionManager::GetStatus() {
 
 std::string DBConnectionManager::GetErrorMessage() {
   return error_.GetMessage();
+}
+
+mstatus_t DBConnectionManager::deleteRowsImp(
+    std::shared_ptr<db_query_delete_setup>& dds) {
+  db_save_point sp("delete_rows");
+  return exec_wrap<const db_query_delete_setup&, void,
+                   void (DBConnectionManager::*)(
+                       Transaction*, const db_query_delete_setup&, void*)>(
+      *dds, nullptr, &DBConnectionManager::deleteRows, &sp);
 }
 
 DBConnectionManager::DBConnectionManager(const IDBTables* tables)
