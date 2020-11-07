@@ -9,7 +9,6 @@
  */
 #include "db_connection_manager.h"
 
-#include "db_connection_postgre.h"
 #if defined(WITH_POSTGRESQL)
 #include "db_connection_postgre.h"
 #endif  // WITH_POSTGRESQL
@@ -209,7 +208,7 @@ std::string DBConnectionManager::GetErrorMessage() {
 }
 
 mstatus_t DBConnectionManager::deleteRowsImp(
-    std::shared_ptr<db_query_delete_setup>& dds) {
+    const std::shared_ptr<db_query_delete_setup>& dds) {
   db_save_point sp("delete_rows");
   return exec_wrap<const db_query_delete_setup&, void,
                    void (DBConnectionManager::*)(

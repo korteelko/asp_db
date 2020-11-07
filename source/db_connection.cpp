@@ -19,7 +19,7 @@
 
 namespace asp_db {
 /* db_parameters */
-db_parameters::db_parameters() : supplier(db_client::NOONE), is_dry_run(true) {}
+db_parameters::db_parameters() : port(0), is_dry_run(true) {}
 
 std::string db_parameters::GetInfo() const {
   std::string info = "Параметры базы данных:\n";
@@ -146,7 +146,6 @@ std::stringstream DBConnection::setupInsertString(
   std::string fnames =
       "INSERT INTO " + tables_->GetTableName(fields.table) + " (";
   std::string values = "VALUES (";
-  std::vector<std::string> rows(fields.values_vec.size());
   for (const auto& row : fields.values_vec) {
     for (const auto& x : row) {
       if (x.first >= 0 && x.first < fields.fields.size()) {

@@ -16,6 +16,9 @@
 #include "db_expression.h"
 #include "db_tables.h"
 
+#include <memory>
+#include <string>
+
 namespace asp_db {
 namespace wns = where_nodes;
 /**

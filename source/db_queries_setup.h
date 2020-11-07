@@ -163,6 +163,19 @@ struct db_query_basesetup {
 struct db_query_insert_setup : public db_query_basesetup {
  public:
   /**
+   * \brief Действие на случай если insert данные уже есть
+   * */
+  enum class on_exists_act {
+    /// Не отслеживать существование данных в таблице
+    not_set = 0,
+    /// Ничего не делать
+    do_nothing,
+    /// Обновить данные
+    do_update
+  };
+
+ public:
+  /**
    * \brief Проверить соответствие значений полей initialized в векторе
    *   элементов данных выборки. Для всех должны быть одинаковы
    * \note Функция для контейнера объектов, не указателей
@@ -181,7 +194,8 @@ struct db_query_insert_setup : public db_query_basesetup {
   db_query_insert_setup(db_table _table, const db_fields_collection& _fields);
   virtual ~db_query_insert_setup() = default;
 
-  size_t RowsSize() const;
+  inline void SetOnExistAct(on_exists_act act) { on_exists = act; }
+  inline size_t RowsSize() const { return values_vec.size(); }
   /**
    * \brief Функция собирающая обычное дерево условий `a` = 'A',
    *   разнесённых операторами AND
@@ -193,7 +207,13 @@ struct db_query_insert_setup : public db_query_basesetup {
    * \brief Набор значений для операций INSERT|SELECT|DELETE
    * */
   std::vector<row_values> values_vec;
+  /**
+   * \brief Флаг действия с insert данными, если они уже
+   *   присутствуют в таблице
+   * */
+  on_exists_act on_exists = on_exists_act::not_set;
 };
+typedef db_query_insert_setup::on_exists_act insert_on_exists_act;
 
 /**
  * \brief Контейнер для результатов операции INSERT, иначе говоря,

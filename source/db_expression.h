@@ -20,6 +20,8 @@
 
 #include <functional>
 #include <memory>
+#include <string>
+#include <utility>
 #include <variant>
 
 #include <assert.h>

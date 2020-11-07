@@ -649,10 +649,9 @@ std::stringstream DBConnectionPostgre::setupInsertString(
   std::string fnames =
       "INSERT INTO " + tables_->GetTableName(fields.table) + " (";
   std::vector<std::string> vals;
-  std::vector<std::string> rows(fields.values_vec.size());
   // set fields
-  auto& row = fields.values_vec[0];
-  for (auto& x : row)
+  auto& row_values = fields.values_vec[0];
+  for (auto& x : row_values)
     fnames += std::string(fields.fields[x.first].fname) + ", ";
   fnames.replace(fnames.size() - 2, fnames.size() - 1, ")");
 
@@ -676,6 +675,7 @@ std::stringstream DBConnectionPostgre::setupInsertString(
   sstr << fnames << " VALUES ";
   for (const auto& x : vals)
     sstr << x;
+  sstr << getOnExistActForInsert(fields.on_exists);
   sstr << "RETURNING " << tables_->GetIdColumnName(fields.table) << ";";
   return sstr;
 }
@@ -784,7 +784,9 @@ void DBConnectionPostgre::execGetColumnInfo(
       if (IS_DEBUG_MODE) {
         std::string cols = std::accumulate(
             columns_info->begin(), columns_info->end(), std::string(),
-            [](std::string& r, const db_field_info& n) { return r + n.name; });
+            [](const std::string& r, const db_field_info& n) {
+              return r + n.name;
+            });
         Logging::Append(
             io_loglvl::debug_logs,
             "Ответ на запрос БД:" + sstr.str() + "\t'" + cols + "'\n");
@@ -885,6 +887,22 @@ std::string DBConnectionPostgre::getVariableValue(const db_variable& var,
   return str;
 }
 
+std::string DBConnectionPostgre::getOnExistActForInsert(
+    insert_on_exists_act act) {
+  switch (act) {
+    case insert_on_exists_act::do_nothing:
+      return " ON CONFLICT DO NOTHING ";
+    case insert_on_exists_act::do_update:
+      return " ON CONFLICT DO UPDATE ";
+    case insert_on_exists_act::not_set:
+    default:
+      return " ";
+  }
+  throw DBException(
+      ERROR_DB_QUERY_SETUP,
+      "Неизвестный тип действия для `ON CONFLICT` условия postgres");
+}
+
 std::string DBConnectionPostgre::db_variable_to_string(const db_variable& dv) {
   std::stringstream ss;
   merror_t ew = dv.CheckYourself();
@@ -912,7 +930,8 @@ std::string DBConnectionPostgre::db_variable_to_string(const db_variable& dv) {
       error_.SetError(ERROR_DB_VARIABLE,
                       "Тип переменной не задан для данной имплементации БД");
     }
-  } else {
+  }  // namespace asp_db
+  else {
     error_.SetError(ew, "Проверка параметров поля таблицы завершилось ошибкой");
   }
   return ss.str();

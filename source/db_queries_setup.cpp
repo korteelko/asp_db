@@ -45,8 +45,9 @@ std::string db_save_point::GetString() const {
 }
 
 /* db_table_create_setup */
-db_table_create_setup::db_table_create_setup(db_table table) : table(table) {
-  ref_strings = std::unique_ptr<db_ref_collection>(new db_ref_collection);
+db_table_create_setup::db_table_create_setup(db_table table)
+    : table(table),
+      ref_strings(std::unique_ptr<db_ref_collection>(new db_ref_collection())) {
 }
 
 db_table_create_setup::db_table_create_setup(
@@ -153,10 +154,6 @@ db_query_insert_setup::db_query_insert_setup(
     const db_fields_collection& _fields)
     : db_query_basesetup(_table, _fields) {}
 
-size_t db_query_insert_setup::RowsSize() const {
-  return values_vec.size();
-}
-
 std::shared_ptr<DBWhereClause<where_node_data>>
 db_query_insert_setup::InitInsertTree() {
   if (values_vec.empty())
@@ -164,7 +161,7 @@ db_query_insert_setup::InitInsertTree() {
   std::shared_ptr<DBWhereClause<where_node_data>> clause = nullptr;
   std::vector<std::shared_ptr<expression_node<where_node_data>>> source;
   source.reserve(values_vec[0].size());
-  auto& row = values_vec[0];
+  const auto& row = values_vec[0];
   for (const auto& x : row) {
     // инициализировать все 3х элементные поддеревья типа
     //             EQ

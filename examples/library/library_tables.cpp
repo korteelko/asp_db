@@ -359,14 +359,6 @@ void IDBTables::SetSelectData<author>(db_query_select_result* src,
       } else if (src->isFieldName(TABLE_FIELD_NAME(AUTHOR_BOOKS),
                                   src->fields[col.first])) {
         string2Container(col.second, &a.books);
-        /*
-        std::vector<std::string> book_ids;
-        col.second.erase(std::remove(col.second.begin(), col.second.end(), '['),
-        col.second.end()); col.second.erase(std::remove(col.second.begin(),
-        col.second.end(), ']'), col.second.end()); split_str(col.second,
-        &book_ids, ','); if (!book_ids.empty()) for (const auto &x: book_ids)
-            a.books.push_back(x);
-      */
       }
     }
     out_vec->push_back(std::move(a));

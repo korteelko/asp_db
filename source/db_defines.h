@@ -44,9 +44,8 @@
 #define ERROR_DB_TABLE_EXISTS (0x0400 | ERROR_DATABASE_T)
 #define ERROR_DB_TABLE_EXISTS_MSG "database table exist error "
 /** \brief Ошибка составления запроса */
-#define ERROR_DB_QUERY_NULLP (0x0500 | ERROR_DATABASE_T)
-#define ERROR_DB_QUERY_NULLP_MSG \
-  "database query setup - database nullptr error "
+#define ERROR_DB_QUERY_SETUP (0x0500 | ERROR_DATABASE_T)
+#define ERROR_DB_QUERY_SETUP_MSG "database query setup error "
 /** \brief Ошибка первичного ключа */
 #define ERROR_DB_TABLE_PKEY (0x0600 | ERROR_DATABASE_T)
 #define ERROR_DB_TABLE_PKEY_MSG "database table primary key setup error "

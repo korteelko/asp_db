@@ -25,6 +25,7 @@
 #include "db_tables.h"
 
 #include <functional>
+#include <memory>
 #include <string>
 #include <type_traits>
 #include <utility>
@@ -46,7 +47,7 @@ struct db_parameters {
   /**
    * \brief Тип клиента
    * */
-  db_client supplier;
+  db_client supplier = db_client::NOONE;
   /* Параметры подключения базы данных */
   /**
    * \brief Имя базы данных

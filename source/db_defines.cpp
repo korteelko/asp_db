@@ -63,13 +63,13 @@ merror_t db_variable::CheckYourself() const {
 
 std::string db_variable::TimeToString(tm* tm) {
   char t[16] = {0};
-  sprintf(t, "%02d:%02d:%02d", tm->tm_hour, tm->tm_min, tm->tm_sec);
+  snprintf(t, sizeof(t), "%02d:%02d:%02d", tm->tm_hour, tm->tm_min, tm->tm_sec);
   return std::string(t);
 }
 
 std::string db_variable::DateToString(tm* tm) {
   char d[16] = {0};
-  sprintf(d, "%04d-%02d-%02d", tm->tm_hour, tm->tm_min, tm->tm_sec);
+  snprintf(d, sizeof(d), "%04d-%02d-%02d", tm->tm_hour, tm->tm_min, tm->tm_sec);
   return std::string(d);
 }
 

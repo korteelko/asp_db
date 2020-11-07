@@ -6,8 +6,8 @@
  * This library is distributed under the MIT License.
  * See LICENSE file in the project root for full license information.
  */
-#ifndef _DATABASE__DB_APPEND_FUNCTOR
-#define _DATABASE__DB_APPEND_FUNCTOR
+#ifndef _DATABASE__DB_APPEND_FUNCTOR_H_
+#define _DATABASE__DB_APPEND_FUNCTOR_H_
 
 #include <functional>
 #include <string>
@@ -90,4 +90,4 @@ struct AppendOp {
   }
 };
 
-#endif  // !_DATABASE__DB_APPEND_FUNCTOR
+#endif  // !_DATABASE__DB_APPEND_FUNCTOR_H_

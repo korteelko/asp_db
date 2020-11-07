@@ -38,7 +38,7 @@ mstatus_t DBQuery::Execute() {
     }
   } else {
     status_ = STATUS_HAVE_ERROR;
-    Logging::Append(ERROR_DB_QUERY_NULLP, "Execute setup connection query");
+    Logging::Append(ERROR_DB_QUERY_SETUP, "Execute setup connection query");
   }
   return status_;
 }
@@ -72,7 +72,7 @@ mstatus_t DBQueryCloseConnection::Execute() {
     status_ = STATUS_OK;
   } else {
     status_ = STATUS_HAVE_ERROR;
-    Logging::Append(ERROR_DB_QUERY_NULLP, "Execute close connection query");
+    Logging::Append(ERROR_DB_QUERY_SETUP, "Execute close connection query");
   }
   return status_;
 }

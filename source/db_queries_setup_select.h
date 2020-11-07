@@ -18,7 +18,10 @@
 #include "db_queries_setup.h"
 #include "db_where.h"
 
+#include <memory>
 #include <optional>
+#include <string>
+#include <vector>
 
 namespace asp_db {
 /**

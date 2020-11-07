@@ -155,8 +155,10 @@ class DBConnectionManager {
    * \todo replace with generic container
    * */
   template <class TableI>
-  mstatus_t SaveNotExistsRows(const std::vector<TableI>& tis,
-                              id_container* id_vec_p = nullptr);
+  mstatus_t SaveNotExistsRows(
+      const std::vector<TableI>& tis,
+      id_container* id_vec_p = nullptr,
+      insert_on_exists_act on_exists = insert_on_exists_act::do_nothing);
   /* select operations */
   /**
    * \brief Вытащить из БД строки TableI по условиям из 'where',
@@ -249,7 +251,13 @@ class DBConnectionManager {
       tables_->SetSelectData(&result, res);
     return st;
   }
-  mstatus_t deleteRowsImp(std::shared_ptr<db_query_delete_setup>& dds);
+  /**
+   * assert
+   * */
+  template <class TableI>
+  mstatus_t saveRowsImp(const db_query_insert_setup& dis,
+                        id_container* id_vec_p);
+  mstatus_t deleteRowsImp(const std::shared_ptr<db_query_delete_setup>& dds);
   /**
    * \brief Обёртка над функционалом сбора и выполнения транзакции:
    *   подключение, создание точки сохранения
@@ -322,7 +330,6 @@ class DBConnectionManager {
  * \brief Закрытый класс создания соединений с БД
  * */
 class DBConnectionManager::DBConnectionCreator {
-  friend class DBConnectionManager;
   OWNER(DBConnectionManager);
 
  private:
@@ -351,6 +358,8 @@ class DBConnectionManager::DBConnectionCreator {
  private:
   /**
    * \brief Логгер модуля БД
+   *
+   * \todo why it is static?
    * */
   static PrivateLogging db_logger_;
 };
@@ -360,13 +369,15 @@ template <class TableI>
 mstatus_t DBConnectionManager::SaveSingleRow(TableI& ti, int* id_p) {
   std::unique_ptr<db_query_insert_setup> dis(
       tables_->InitInsertSetup<TableI>({ti}));
-  db_save_point sp("save_" + tables_->GetTableName<TableI>());
   id_container id_vec;
-  mstatus_t st =
-      exec_wrap<const db_query_insert_setup&, id_container,
-                void (DBConnectionManager::*)(
-                    Transaction*, const db_query_insert_setup&, id_container*)>(
-          *dis, &id_vec, &DBConnectionManager::saveRows, &sp);
+  mstatus_t st;
+  if (dis.get() != nullptr) {
+    st = saveRowsImp<TableI>(*dis, &id_vec);
+  } else {
+    Logging::Append(io_loglvl::warn_logs,
+                    "Ошибка добавления набора строк в SaveSingleRow \n"
+                    "к БД - не инициализирован сетап добавляемыхх данных");
+  }
   if (id_vec.id_vec.size() && id_p)
     *id_p = id_vec.id_vec[0];
   return st;
@@ -377,69 +388,43 @@ mstatus_t DBConnectionManager::SaveVectorOfRows(const std::vector<TableI>& tis,
   std::unique_ptr<db_query_insert_setup> dis(
       tables_->InitInsertSetup<TableI>(tis));
   mstatus_t st = STATUS_NOT;
-  if (dis.get()) {
-    db_save_point sp("save_" + tables_->GetTableName<TableI>());
-    st = exec_wrap<const db_query_insert_setup&, id_container,
-                   void (DBConnectionManager::*)(Transaction*,
-                                                 const db_query_insert_setup&,
-                                                 id_container*)>(
-        *dis, id_vec_p, &DBConnectionManager::saveRows, &sp);
+  if (dis.get() != nullptr) {
+    st = saveRowsImp<TableI>(*dis, id_vec_p);
   } else {
     Logging::Append(io_loglvl::warn_logs,
-                    "Ошибка добавления набора строк "
+                    "Ошибка добавления набора строк в SaveVectorOfRows \n"
                     "к БД - не инициализирован сетап добавляемыхх данных");
   }
   return st;
 }
 template <class TableI>
-mstatus_t DBConnectionManager::SaveNotExistsRows(const std::vector<TableI>& tis,
-                                                 id_container* id_vec_p) {
-  id_container id_vec;
-  id_vec.id_vec = std::vector<int>(tis.size());
-  size_t exists_num = 0;
-  for (size_t i = 0; i < tis.size(); ++i) {
-    std::vector<TableI> s;
-    id_vec.id_vec[i] = -1;
-    if (is_status_ok(SelectRows(tis[i], &s))) {
-      if (s.size()) {
-        exists_num++;
-        id_vec.id_vec[i] = s[0].id;
-      }
-    }
-  }
-  mstatus_t st = STATUS_DEFAULT;
-  if (exists_num == tis.size()) {
-    // все элементы оказались наместе
-    if (id_vec_p) {
-      id_vec_p->id_vec.swap(id_vec.id_vec);
-      st = id_vec_p->status = STATUS_OK;
-    }
-  } else if (exists_num == 0) {
-    // все элементы новенькие
-    st = SaveVectorOfRows(tis, id_vec_p);
+mstatus_t DBConnectionManager::SaveNotExistsRows(
+    const std::vector<TableI>& tis,
+    id_container* id_vec_p,
+    insert_on_exists_act on_exists) {
+  mstatus_t st = STATUS_NOT;
+  std::unique_ptr<db_query_insert_setup> dis(
+      tables_->InitInsertSetup<TableI>(tis));
+  if (dis.get() != nullptr) {
+    dis->SetOnExistAct(on_exists);
+    st = saveRowsImp<TableI>(*dis, id_vec_p);
   } else {
-    // есть но не все
-    std::vector<TableI> tis_ex;
-    for (size_t i = 0; i < tis.size(); ++i)
-      if (id_vec.id_vec[i] == -1)
-        tis_ex.push_back(tis[i]);
-    id_container id_vec_ex;
-    st = SaveVectorOfRows(tis_ex, &id_vec_ex);
-    if (is_status_ok(st)) {
-      auto it_vec_ex = id_vec_ex.id_vec.begin();
-      auto it_vec = std::find_if(id_vec.id_vec.begin(), id_vec.id_vec.end(),
-                                 [](int id) { return id == -1; });
-      while (it_vec_ex != id_vec_ex.id_vec.end() &&
-             it_vec != id_vec.id_vec.end()) {
-        *it_vec = *it_vec_ex;
-        it_vec = std::find_if(it_vec, id_vec.id_vec.end(),
-                              [](int id) { return id == -1; });
-      }
-      id_vec_p->id_vec.swap(id_vec.id_vec);
-      st = id_vec_p->status = STATUS_OK;
-    }
+    Logging::Append(io_loglvl::warn_logs,
+                    "Ошибка добавления набора строк в SaveNotExistsRows"
+                    "к БД - не инициализирован сетап добавляемыхх данных");
   }
   return st;
+}
+
+template <class TableI>
+mstatus_t DBConnectionManager::saveRowsImp(const db_query_insert_setup& dis,
+                                           id_container* id_vec_p) {
+  db_save_point sp("save_" + tables_->GetTableName<TableI>());
+  return exec_wrap<const db_query_insert_setup&, id_container,
+                   void (DBConnectionManager::*)(Transaction*,
+                                                 const db_query_insert_setup&,
+                                                 id_container*)>(
+      dis, id_vec_p, &DBConnectionManager::saveRows, &sp);
 }
 
 template <class DataT, class OutT, class SetupQueryF>
@@ -481,7 +466,6 @@ mstatus_t DBConnectionManager::exec_wrap(DataT data,
   }
   return trans_st;
 }
-
 }  // namespace asp_db
 
 #endif  // !_DATABASE__DB_CONNECTION_MANAGER_H_

@@ -19,13 +19,6 @@
 
 #include <assert.h>
 
-#define book_construct(book, i, l, t, py, flags) \
-  book.id = i;                                   \
-  book.lang = l;                                 \
-  book.title = t;                                \
-  book.first_pub_year = py;                      \
-  book.initialized = flags;
-
 #define translation_construct(trans, i, l, bp, trs, ln, flags) \
   trans.id = i;                                                \
   trans.lang = l;                                              \

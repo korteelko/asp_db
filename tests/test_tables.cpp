@@ -64,12 +64,8 @@ TEST_F(DatabaseTablesTest, InsertBooks) {
   std::string str = "string by gtest";
   /* insert */
   book divine_comedy;
-  divine_comedy.id = -1;
-  divine_comedy.lang = lang_ita;
-  divine_comedy.title = "Divina Commedia";
-  // дата завершения
-  divine_comedy.first_pub_year = 1320;
-  divine_comedy.initialized = book::f_full & ~book::f_id;
+  book_construct(divine_comedy, -1, lang_ita, "Divina Commedia", 1320,
+                 book::f_full & ~book::f_id);
   WhereTree wt1(c);
   wt1.Init(c.And(c.Eq(BOOK_LANG, int(lang_ita)),
                  c.Eq(BOOK_TITLE, "Divina Commedia"),
@@ -103,4 +99,14 @@ TEST_F(DatabaseTablesTest, InsertBooks) {
   st = dbm_.SelectRows(wt1, &r);
   EXPECT_TRUE(r.empty());
   ASSERT_TRUE(is_status_ok(st));
+
+  /* add SaveNotExists */
+  book quixote;
+  book_construct(quixote, -1, lang_esp,
+                 "El ingenioso hidalgo don Quijote de la Mancha", 1605,
+                 book::f_full & ~book::f_id);
+  r.push_back(quixote);
+  id_container r_id;
+  st = dbm_.SaveNotExistsRows(r, &r_id);
+  EXPECT_TRUE(is_status_ok(st));
 }

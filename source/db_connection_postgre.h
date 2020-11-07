@@ -247,11 +247,24 @@ class DBConnectionPostgre final : public DBConnection {
   void addVariableToString(std::string* str_p,
                            const db_variable& var,
                            const std::string& value);
-  /** \brief Получить строковое представление переменной
+  /**
+   * \brief Получить строковое представление переменной
    * \param var Параметры добавляемого значения
-   * \param value Строковое представление параметра */
+   * \param value Строковое представление параметра
+   * */
   std::string getVariableValue(const db_variable& var,
                                const std::string& value);
+
+  /**
+   * \brief Получить подстроку INSERT запроса соответствующую отработке
+   *   `act` для существующих данных
+   * \param act Действия над данными таблиц уже существующими в БД
+   *
+   * Функция для INSERT запроса вернёт подстроку описывающую реакцию на
+   * наличие конфликтов включаемых данных(из db_query_insert_setup) и уже
+   * существующих в БД.
+   * */
+  std::string getOnExistActForInsert(insert_on_exists_act act);
 
  private:
   /**

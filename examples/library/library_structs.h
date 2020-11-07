@@ -30,9 +30,21 @@ enum language_t {
   lang_esp = 3,
   lang_ita = 4
 };
-/** \brief Вот например книжка */
+
+#define book_construct(book, i, l, t, py, flags) \
+  book.id = i;                                   \
+  book.lang = l;                                 \
+  book.title = t;                                \
+  book.first_pub_year = py;                      \
+  book.initialized = flags;
+
+/**
+ * \brief Вот например книжка
+ * */
 struct book {
-  /** \brief Флаги инициализированных полей */
+  /**
+   * \brief Флаги инициализированных полей
+   * */
   enum initialized_flags {
     f_title = 0x01,
     f_pub_year = 0x02,
