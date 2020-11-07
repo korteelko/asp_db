@@ -23,7 +23,6 @@ if(WITH_POSTGRESQL)
 endif()
 
 add_library(${TARGET_ASP_DB_LIB}
-
   ${ASP_DB_ROOT}/source/db_connection.cpp
   ${ASP_DB_ROOT}/source/db_connection_manager.cpp
   ${ASP_DB_ROOT}/source/db_defines.cpp
@@ -53,7 +52,6 @@ set_target_properties(${TARGET_ASP_DB_LIB} PROPERTIES
 )
 
 target_link_libraries(${TARGET_ASP_DB_LIB}
-
   Threads::Threads
   stdc++fs
   asp_utils

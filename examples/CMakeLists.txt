@@ -1,3 +1,5 @@
-add_subdirectory(library)
+if(WITH_POSTGRESQL)
+  add_subdirectory(library)
+endif()
 #add_subdirectory(meta_example)
 #add_subdirectory(meta2)
