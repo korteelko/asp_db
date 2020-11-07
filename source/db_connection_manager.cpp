@@ -207,11 +207,7 @@ DBConnectionManager::DBConnectionManager(const IDBTables* tables)
     : tables_(tables) {}
 
 void DBConnectionManager::initDBConnection() {
-#ifdef CXX17
   std::unique_lock<SharedMutex> lock(connect_init_lock_);
-#else
-  std::lock_guard<Mutex> lock(connect_init_lock_);
-#endif  // CXX17
   status_ = STATUS_OK;
   try {
     db_connection_ = std::unique_ptr<DBConnection>(
@@ -267,11 +263,7 @@ void DBConnectionManager::deleteRows(Transaction* tr,
 }
 
 mstatus_t DBConnectionManager::tryExecuteTransaction(Transaction& tr) {
-#ifdef CXX17
   std::shared_lock<SharedMutex> lock(connect_init_lock_);
-#else
-  std::lock_guard<Mutex> lock(connect_init_lock_);
-#endif  // CXX17
   mstatus_t trans_st;
   try {
     trans_st = tr.ExecuteQueries();

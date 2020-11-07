@@ -418,13 +418,13 @@ class DBConnectionManager {
  private:
   ErrorWrap error_;
   mstatus_t status_;
-#ifdef CXX17
-  /** \brief Мьютекс на подключение к БД */
+  /**
+   * \brief Мьютекс на подключение к БД
+   * */
   SharedMutex connect_init_lock_;
-#else
-  Mutex connect_init_lock_;
-#endif  // CXX17
-  /** \brief Параметры текущего подключения к БД */
+  /**
+   * \brief Параметры текущего подключения к БД
+   * */
   db_parameters parameters_;
   /**
    * \brief Указатель на С++ интерфейс имплементации таблиц БД

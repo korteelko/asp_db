@@ -2,80 +2,62 @@ cmake_minimum_required(VERSION 3.9)
 
 set(PROJECT_NAME asp_db)
 project(${PROJECT_NAME})
-
-set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
-add_compile_options(-Wall)
-
-set(CMAKE_BUILD_TYPE Debug)
-
-set(CMAKE_CXX_STANDARD 17)
-set(CMAKE_CXX_STANDARD_REQUIRED ON)
-add_definitions(-DBYCMAKE_CXX17)
+set(TARGET_ASP_DB_LIB ${PROJECT_NAME})
 
 set(ASP_DB_ROOT ${CMAKE_CURRENT_SOURCE_DIR})
 set(SOURCE_ROOT ${CMAKE_CURRENT_SOURCE_DIR}/source)
 set(MODULES_DIR ${ASP_DB_ROOT}/lib)
 set(OUTPUT_DIR ${ASP_DB_ROOT}/out)
 
-# OPTIONS
-if(CMAKE_BUILD_TYPE STREQUAL "Debug")
-  add_definitions(-DBYCMAKE_DEBUG)
-  message(STATUS "${PROJECT_NAME} Debug build")
-  option(BUILD_EXAMPLES "Build examples" ON)
-  option(TESTS_ENABLED "Run tests" ON)
-else()
-  message(STATUS "${PROJECT_NAME} Release build")
-  option(BUILD_EXAMPLES "Build examples" OFF)
-  option(TESTS_ENABLED "Run tests" OFF)
+message(STATUS "${PROJECT_NAME} build type: ${CMAKE_BUILD_TYPE}")
+
+option(WITH_POSTGRESQL "Build with postres libs: `pq` and `pqxx`" ON)
+option(BUILD_EXAMPLES "Build examples" ON)
+option(TESTS_ENABLED "Run tests" OFF)
+
+if(WITH_POSTGRESQL)
+  list(APPEND OPTIONAL_SRC ${ASP_DB_ROOT}/source/db_connection_postgre.cpp)
+  list(APPEND OPTIONAL_LIBS pq pqxx)
+  # прокинуть дефайн на postgres
+  add_definitions(-DBYCMAKE_WITH_POSTGRESQL)
 endif()
 
-#======================================================
-# SOURCE
-#======================================================
-include(db_source.cmake)
+add_library(${TARGET_ASP_DB_LIB}
 
-#======================================================
-# LIBRARIES AND MODULES
-#======================================================
-#   pqxx
-#   http://pqxx.org/development/libpqxx/
-add_definitions(-DBYCMAKE_WITH_POSTGRESQL)
-set(PQXX_LIBS pqxx pq)
+  ${ASP_DB_ROOT}/source/db_connection.cpp
+  ${ASP_DB_ROOT}/source/db_connection_manager.cpp
+  ${ASP_DB_ROOT}/source/db_defines.cpp
+  ${ASP_DB_ROOT}/source/db_expression.cpp
+  ${ASP_DB_ROOT}/source/db_queries_setup.cpp
+  ${ASP_DB_ROOT}/source/db_queries_setup_select.cpp
+  ${ASP_DB_ROOT}/source/db_query.cpp
+  ${OPTIONAL_SRC}
+)
 
-#   asp_utils
+target_compile_features(${TARGET_ASP_DB_LIB} PUBLIC cxx_std_17)
+target_include_directories(${TARGET_ASP_DB_LIB} PUBLIC ${SOURCE_ROOT})
+target_compile_definitions(${TARGET_ASP_DB_LIB}
+  PRIVATE -DBYCMAKE_WITH_POSTGRESQL
+)
+
 add_subdirectory(${MODULES_DIR}/asp_utils)
-include_directories(${MODULES_DIR}/asp_utils/source)
 
-#   thread
-set(THREADS_PREFER_PTHREAD_FLAG ON)
+if(CMAKE_BUILD_TYPE MATCHES Debug)
+  target_compile_definitions(${TARGET_ASP_DB_LIB} PRIVATE -DBYCMAKE_DEBUG)
+endif()
+
 find_package(Threads REQUIRED)
-
-include_directories(${SOURCE_ROOT}/utils)
-
-#======================================================
-# OUTPUT SETUP
-#======================================================
-add_library(${PROJECT_NAME} STATIC ${DATABASE_SOURCE} ${UTILS_SOURCE})
-set_target_properties(${PROJECT_NAME} PROPERTIES
+set_target_properties(${TARGET_ASP_DB_LIB} PROPERTIES
     LIBRARY_OUTPUT_DIRECTORY ${OUTPUT_DIR}
     ARCHIVE_OUTPUT_DIRECTORY ${OUTPUT_DIR}
 )
 
-foreach(OUTPUTCONFIG ${CMAKE_CONFIGURATION_TYPES})
-  string(TOUPPER ${OUTPUTCONFIG} OUTPUTCONFIG)
-  set_target_properties(${PROJECT_NAME}
-    PROPERTIES LIBRARY_OUTPUT_DIRECTORY_${OUTPUTCONFIG} ${OUTPUT_DIR}
-    PROPERTIES ARCHIVE_OUTPUT_DIRECTORY_${OUTPUTCONFIG} ${OUTPUT_DIR}
-  )
-endforeach()
+target_link_libraries(${TARGET_ASP_DB_LIB}
 
-target_link_directories(${PROJECT_NAME} PUBLIC ${ASP_DB_ROOT}/build)
-target_link_libraries(${PROJECT_NAME}
-
-  asp_utils
-  stdc++fs
   Threads::Threads
-  ${PQXX_LIBS}
+  stdc++fs
+  asp_utils
+  ${OPTIONAL_LIBS}
 )
 
 # add examples

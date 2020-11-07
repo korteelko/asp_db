@@ -1,56 +1,42 @@
-cmake_minimum_required(VERSION 3.7)
-
-set(MAIN_PROJECT "asp_db")
-project(${MAIN_PROJECT}-fulltests)
+set(TARGET_ASP_DB_TESTS asp_db-fulltests)
 
 set(PROJECT_ROOT ${CMAKE_CURRENT_SOURCE_DIR}/..)
 set(PROJECT_FULLTEST_DIR ${CMAKE_CURRENT_SOURCE_DIR})
-set(PROJECT_EXAMPLES_DIR ${PROJECT_ROOT}/examples)
-set(LIBRARY_EXAMPLE_DIR ${PROJECT_EXAMPLES_DIR}/library)
-set(FULLTEST_LIBRARIES "")
+set(LIBRARY_EXAMPLE_DIR ${PROJECT_ROOT}/examples/library)
 
-set(CMAKE_CXX_STANDARD 17)
-set(CMAKE_CXX_STANDARD_REQUIRED ON)
-
-# todo: redo this
 find_package(GTest)
 if(${GTEST_FOUND})
-  include_directories(${GTEST_INCLUDE_DIRS})
-  list(APPEND FULLTEST_LIBRARIES gtest gtest_main)
-
-  # code coverage
-  add_compile_options(-fprofile-arcs -ftest-coverage)
-  list(APPEND FULLTEST_LIBRARIES gcov)
-
-  find_package(Threads REQUIRED)
-  list(APPEND FULLTEST_LIBRARIES Threads::Threads)
-
-  include_directories(
-    ${LIBRARY_EXAMPLE_DIR}
-  )
-
-  include(${PROJECT_ROOT}/db_source.cmake)
-
-  set(MODULES_DIR ${ASP_DB_ROOT}/lib)
-  set(ASP_DB_DIR ${MODULES_DIR}/asp_db)
-  link_directories(${ASP_DB_DIR})
-
-  # database tests
   add_executable(
-    test_database
+    ${TARGET_ASP_DB_TESTS}
 
-    ${DATABASE_SOURCE}
+    ${PROJECT_ROOT}/source/db_connection.cpp
+    ${PROJECT_ROOT}/source/db_connection_manager.cpp
+    ${PROJECT_ROOT}/source/db_defines.cpp
+    ${PROJECT_ROOT}/source/db_expression.cpp
+    ${PROJECT_ROOT}/source/db_queries_setup.cpp
+    ${PROJECT_ROOT}/source/db_queries_setup_select.cpp
+    ${PROJECT_ROOT}/source/db_query.cpp
     ${PROJECT_FULLTEST_DIR}/test_connection.cpp
     ${PROJECT_FULLTEST_DIR}/test_expression.cpp
     ${PROJECT_FULLTEST_DIR}/test_tables.cpp
     ${PROJECT_FULLTEST_DIR}/test_queries.cpp
     ${LIBRARY_EXAMPLE_DIR}/library_tables.cpp
+    ${OPTIONAL_SRC}
   )
-  target_link_libraries(test_database
+  target_compile_options(${TARGET_ASP_DB_TESTS}
+    PRIVATE -fprofile-arcs -ftest-coverage -Wall)
 
+  target_include_directories(${TARGET_ASP_DB_TESTS}
+    PRIVATE ${LIBRARY_EXAMPLE_DIR}
+    PRIVATE ${PROJECT_ROOT}/source
+    PRIVATE ${PROJECT_ROOT}/lib/asp_utils/source
+    PRIVATE ${GTEST_INCLUDE_DIRS}
+  )
+
+  target_link_libraries(${TARGET_ASP_DB_TESTS}
     asp_utils
-    ${FULLTEST_LIBRARIES}
-    pqxx
-    pq
+    ${OPTIONAL_LIBS}
+    gtest gtest_main
+    gcov
   )
 endif(${GTEST_FOUND})
