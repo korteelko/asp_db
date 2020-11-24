@@ -370,7 +370,7 @@ mstatus_t DBConnectionManager::SaveSingleRow(TableI& ti, int* id_p) {
   std::unique_ptr<db_query_insert_setup> dis(
       tables_->InitInsertSetup<TableI>({ti}));
   id_container id_vec;
-  mstatus_t st;
+  mstatus_t st = STATUS_NOT;
   if (dis.get() != nullptr) {
     st = saveRowsImp<TableI>(*dis, &id_vec);
   } else {
@@ -434,7 +434,7 @@ mstatus_t DBConnectionManager::exec_wrap(DataT data,
                                          db_save_point* sp_ptr) {
   if (status_ == STATUS_DEFAULT)
     status_ = CheckConnection();
-  mstatus_t trans_st;
+  mstatus_t trans_st = STATUS_NOT;
   if (db_connection_ && is_status_aval(status_)) {
     auto c = DBConnectionCreator().cloneConnection(db_connection_.get());
     if (c.get()) {
@@ -460,8 +460,8 @@ mstatus_t DBConnectionManager::exec_wrap(DataT data,
   } else {
     error_.SetError(ERROR_DB_CONNECTION,
                     "Не удалось установить "
-                    "соединение для БД: " +
-                        parameters_.GetInfo());
+                    "соединение для БД: "
+                        + parameters_.GetInfo());
     status_ = trans_st = STATUS_HAVE_ERROR;
   }
   return trans_st;

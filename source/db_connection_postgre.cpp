@@ -92,8 +92,8 @@ struct where_string_set {
     } else if (t == db_variable_type::type_time) {
       return DBConnectionPostgre::TimeToPostgreTime(v);
     }
-    bool need_quote = (t == db_variable_type::type_char_array ||
-                       t == db_variable_type::type_text);
+    bool need_quote = (t == db_variable_type::type_char_array
+                       || t == db_variable_type::type_text);
     // для опции dry_run указатель не проинциализирован
     return (need_quote && tr) ? tr->quote(v) : v;
   }
@@ -235,8 +235,8 @@ mstatus_t DBConnectionPostgre::SetupConnection() {
       }
     } catch (const std::exception& e) {
       error_.SetError(ERROR_DB_CONNECTION,
-                      "Подключение к БД: exception. Запрос:\n" + connect_str +
-                          "\nexception what: " + e.what());
+                      "Подключение к БД: exception. Запрос:\n" + connect_str
+                          + "\nexception what: " + e.what());
       status_ = STATUS_HAVE_ERROR;
     }
   } else {
@@ -341,7 +341,7 @@ mstatus_t DBConnectionPostgre::GetTableFormat(db_table t,
       t, &constrains, &DBConnectionPostgre::setupGetConstrainsString,
       &DBConnectionPostgre::execGetConstrainsString);
   // обход по ограничениям - первичным и внешним ключам, уникальным комплексам
-  merror_t error;
+  merror_t error = ERROR_SUCCESS_T;
   if (is_status_ok(res)) {
     for (pqxx::const_result_iterator::reference row : constrains) {
       // массив индексов
@@ -353,8 +353,8 @@ mstatus_t DBConnectionPostgre::GetTableFormat(db_table t,
         postgresql_impl::StringToIntNumbers(indexes_str, &indexes);
         if (indexes.empty()) {
           error = error_.SetError(ERROR_STR_PARSE_ST,
-                                  "Ошибка парсинга строки: '" + indexes_str +
-                                      "' - пустой результат");
+                                  "Ошибка парсинга строки: '" + indexes_str
+                                      + "' - пустой результат");
           break;
         }
         // такс, здесь храним имена колонок, которые достанем из ряда row
@@ -663,8 +663,8 @@ std::stringstream DBConnectionPostgre::setupInsertString(
       } else {
         Logging::Append(io_loglvl::debug_logs,
                         "Ошибка индекса операции INSERT.\n"
-                        "\tДля таблицы " +
-                            tables_->GetTableName(fields.table));
+                        "\tДля таблицы "
+                            + tables_->GetTableName(fields.table));
       }
     }
     value.replace(value.size() - 2, value.size(), "),");
@@ -752,8 +752,8 @@ void DBConnectionPostgre::execIsTableExists(const std::stringstream& sstr,
       *is_exists = (ex == "t") ? true : false;
       if (IS_DEBUG_MODE)
         Logging::Append(io_loglvl::debug_logs,
-                        "Ответ на запрос БД:" + sstr.str() + "\t'" +
-                            trres.begin()[0].as<std::string>() + "'\n");
+                        "Ответ на запрос БД:" + sstr.str() + "\t'"
+                            + trres.begin()[0].as<std::string>() + "'\n");
     }
   }
 }
@@ -872,8 +872,8 @@ std::string DBConnectionPostgre::getVariableValue(const db_variable& var,
                                                   const std::string& value) {
   db_variable_type t = var.type;
   std::string str = "";
-  if ((t == db_variable_type::type_char_array ||
-       t == db_variable_type::type_text)) {
+  if ((t == db_variable_type::type_char_array
+       || t == db_variable_type::type_text)) {
     auto txn = pqxx_work.GetTransaction();
     if (txn)
       str = txn->quote(value) + ", ";

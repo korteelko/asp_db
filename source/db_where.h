@@ -356,6 +356,12 @@ class WhereTree {
   WhereTree(WhereTreeConstructor<table> constructor)
       : constructor_(constructor) {}
 
+  /**
+   * \brief Инициализировать дерево where условия
+   *
+   * Инициализировать дерево where условия, установив новую корневую
+   * ноду(перезапишет старую если она была установлена)
+   * */
   void Init(const wns::node_ptr& node) {
     clause_ = std::make_shared<DBWhereClause<where_node_data>>(node);
   }

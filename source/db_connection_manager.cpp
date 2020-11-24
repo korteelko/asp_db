@@ -18,12 +18,14 @@
 #include <assert.h>
 
 namespace asp_db {
+#if defined(WITH_POSTGRESQL)
 logging_cfg postgres_logging_cfg(POSTGRE_DRYRUN_LOGGER,
                                  io_loglvl::info_logs,
                                  POSTGRE_DRYRUN_LOGFILE,
                                  DEFAULT_MAXLEN_LOGFILE,
                                  DEFAULT_FLUSH_RATE,
                                  false);
+#endif  // WITH_POSTGRESQL
 
 // db_parameters::db_parameters()
 //   : supplier(db_client::NOONE) {}
@@ -114,8 +116,8 @@ mstatus_t DBConnectionManager::CheckConnection() {
   } else {
     error_.SetError(ERROR_DB_CONNECTION,
                     "Не удалось установить"
-                    " соединение для БД: " +
-                        parameters_.GetInfo());
+                    " соединение для БД: "
+                        + parameters_.GetInfo());
     status_ = STATUS_HAVE_ERROR;
   }
   return status_;
@@ -283,8 +285,8 @@ mstatus_t DBConnectionManager::tryExecuteTransaction(Transaction& tr) {
   } catch (const std::exception& e) {
     error_.SetError(ERROR_DB_CONNECTION,
                     "Во время попытки "
-                    "подключения к БД перехвачено исключение: " +
-                        std::string(e.what()));
+                    "подключения к БД перехвачено исключение: "
+                        + std::string(e.what()));
     error_.LogIt();
     trans_st = STATUS_HAVE_ERROR;
   }
@@ -324,8 +326,8 @@ DBConnectionManager::DBConnectionCreator::cloneConnection(DBConnection* orig) {
   try {
     return (orig) ? orig->CloneConnection() : nullptr;
   } catch (std::exception& e) {
-    Logging::Append(io_loglvl::err_logs, "Ошибка копирования соединения бд:\n" +
-                                             std::string(e.what()));
+    Logging::Append(io_loglvl::err_logs, "Ошибка копирования соединения бд:\n"
+                                             + std::string(e.what()));
   }
   return nullptr;
 }

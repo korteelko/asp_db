@@ -16,6 +16,8 @@ option(BUILD_EXAMPLES "Build examples" ON)
 option(TESTS_ENABLED "Run tests" OFF)
 
 if(WITH_POSTGRESQL)
+  message(STATUS "Add libraries pq and pqxx.\n\t\t"
+    "See http://pqxx.org/development/libpqxx for more information")
   list(APPEND OPTIONAL_SRC ${ASP_DB_ROOT}/source/db_connection_postgre.cpp)
   list(APPEND OPTIONAL_LIBS pq pqxx)
   # прокинуть дефайн на postgres
@@ -35,9 +37,7 @@ add_library(${TARGET_ASP_DB_LIB}
 
 target_compile_features(${TARGET_ASP_DB_LIB} PUBLIC cxx_std_17)
 target_include_directories(${TARGET_ASP_DB_LIB} PUBLIC ${SOURCE_ROOT})
-target_compile_definitions(${TARGET_ASP_DB_LIB}
-  PRIVATE -DBYCMAKE_WITH_POSTGRESQL
-)
+# target_compile_definitions(${TARGET_ASP_DB_LIB} PRIVATE -DBYCMAKE_WITH_POSTGRESQL)
 
 add_subdirectory(${MODULES_DIR}/asp_utils)
 
