@@ -5,7 +5,9 @@ out/
 soft/
 tests/html
 
+.cache/
 .ccls-cache/
+.clangd/
 .vs/
 .vscode/
 
@@ -16,6 +18,7 @@ tests/html
 
 CMakeLists.txt.user*
 
+compile_commands.json
 CHANGELOG.md
 HISTORY.md
 
