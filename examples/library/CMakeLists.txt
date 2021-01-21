@@ -9,6 +9,5 @@ add_executable(${TARGET_EXAMPLE} library_tables.cpp main.cpp)
 target_include_directories(${TARGET_EXAMPLE} PRIVATE ${ASP_DB_SOURCE_ROOT})
 
 target_link_libraries(${TARGET_EXAMPLE}
-  asp_utils
   asp_db
 )

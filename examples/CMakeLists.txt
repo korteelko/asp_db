@@ -1,5 +1,6 @@
 if(WITH_POSTGRESQL)
   add_subdirectory(library)
+  # add_subdirectory(zoo)
 endif()
 #add_subdirectory(meta_example)
 #add_subdirectory(meta2)

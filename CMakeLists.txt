@@ -13,7 +13,7 @@ message(STATUS "${PROJECT_NAME} build type: ${CMAKE_BUILD_TYPE}")
 
 option(WITH_POSTGRESQL "Build with postres libs: `pq` and `pqxx`" ON)
 option(BUILD_EXAMPLES "Build examples" ON)
-option(TESTS_ENABLED "Run tests" OFF)
+option(BUILD_TESTS "Run tests" ON)
 
 if(WITH_POSTGRESQL)
   message(STATUS "Add libraries pq and pqxx.\n\t\t"
@@ -63,7 +63,7 @@ if(BUILD_EXAMPLES)
 endif()
 
 # run tests
-if(TESTS_ENABLED)
+if(BUILD_TESTS)
   message(STATUS "Запускаем тесты")
   enable_testing()
   add_subdirectory("${ASP_DB_ROOT}/tests")
@@ -75,6 +75,6 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS TRUE)
 # скопировать файл compile_commands.json в корень проекта, для работы
 #   синтаксических анализаторов, cppcheck и т.д.
 add_custom_target(
-  copy-compile-commands ALL
+  copy-compile-commands-asp-db ALL
   ${CMAKE_COMMAND} -E copy_if_different
   ${CMAKE_BINARY_DIR}/compile_commands.json ${CMAKE_CURRENT_LIST_DIR})
