@@ -21,7 +21,7 @@ if(WITH_POSTGRESQL)
   list(APPEND OPTIONAL_SRC ${ASP_DB_ROOT}/source/db_connection_postgre.cpp)
   list(APPEND OPTIONAL_LIBS pq pqxx)
   # прокинуть дефайн на postgres
-  add_definitions(-DBYCMAKE_WITH_POSTGRESQL)
+  # add_definitions(-DBYCMAKE_WITH_POSTGRESQL)
 endif()
 
 add_library(
@@ -37,6 +37,10 @@ add_library(
 
 target_compile_features(${TARGET_ASP_DB_LIB} PUBLIC cxx_std_17)
 target_include_directories(${TARGET_ASP_DB_LIB} PUBLIC ${SOURCE_ROOT})
+if(WITH_POSTGRESQL)
+  target_compile_definitions(${TARGET_ASP_DB_LIB}
+                             PUBLIC -DBYCMAKE_WITH_POSTGRESQL)
+endif()
 
 add_subdirectory(${MODULES_DIR}/asp_utils)
 

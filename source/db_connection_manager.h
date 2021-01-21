@@ -115,6 +115,10 @@ class DBException : public std::exception {
    * */
   ErrorWrap error_;
   /**
+   * \brief Сформированное сообщение ошибки
+   * */
+  std::string msg_;
+  /**
    * \brief Код таблицы
    * */
   db_table table_ = UNDEFINED_TABLE;

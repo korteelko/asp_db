@@ -580,7 +580,9 @@ std::string DBConnectionPostgre::setupConnectionString() {
   std::stringstream connect_ss;
   connect_ss << "dbname = " << parameters_.name << " ";
   connect_ss << "user = " << parameters_.username << " ";
+#ifdef _DEBUG
   connect_ss << "password = " << parameters_.password << " ";
+#endif  // _DEBUG
   connect_ss << "hostaddr = " << parameters_.host << " ";
   connect_ss << "port = " << parameters_.port;
   return connect_ss.str();

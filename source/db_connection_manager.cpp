@@ -64,12 +64,14 @@ DBConnection* Transaction::GetConnection() const {
 
 /* DBException */
 DBException::DBException(merror_t error, const std::string& msg)
-    : error_(error, msg) {}
+    : error_(error, msg) {
+  msg_ = error_.GetMessage();
+}
 DBException::DBException(const std::string& msg)
     : DBException(ERROR_GENERAL_T, msg) {}
 
 const char* DBException::what() const noexcept {
-  return error_.GetMessagePtr();
+  return msg_.c_str();
 }
 
 DBException& DBException::AddTableCode(db_table table) {
