@@ -75,6 +75,6 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS TRUE)
 # скопировать файл compile_commands.json в корень проекта, для работы
 #   синтаксических анализаторов, cppcheck и т.д.
 add_custom_target(
-  copy-compile-commands-asp-db ALL
+  copy-compile-commands-asp_db ALL
   ${CMAKE_COMMAND} -E copy_if_different
   ${CMAKE_BINARY_DIR}/compile_commands.json ${CMAKE_CURRENT_LIST_DIR})
