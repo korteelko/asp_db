@@ -1,3 +1,6 @@
 [submodule "lib/asp_utils"]
 	path = lib/asp_utils
 	url = https://github.com/korteelko/asp_utils
+[submodule "soft/macrogen"]
+	path = soft/macrogen
+	url = https://github.com/korteelko/scripts
