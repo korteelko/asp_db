@@ -9,7 +9,7 @@
  */
 #include "db_queries_setup.h"
 
-#include "Logging.h"
+#include "asp_utils/Logging.h"
 #include "db_connection_manager.h"
 #include "db_tables.h"
 
@@ -25,7 +25,7 @@ db_save_point::db_save_point(const std::string& _name) : name("") {
     if (std::isalpha(tmp[0]) || tmp[0] == '_') {
       // проверить наличие пробелов и знаков разделения
       auto sep_pos = std::find_if_not(tmp.begin(), tmp.end(), [](char c) {
-        return std::iswalnum(c) || c == '_';
+        return std::isalnum(c) || c == '_';
       });
       if (sep_pos == tmp.end())
         name = tmp;
@@ -35,8 +35,8 @@ db_save_point::db_save_point(const std::string& _name) : name("") {
     Logging::Append(
         ERROR_DB_SAVE_POINT,
         "Ошибка инициализации параметров точки сохранения состояния БД\n"
-        "Строка инициализации: " +
-            _name);
+        "Строка инициализации: "
+            + _name);
   }
 }
 
@@ -81,14 +81,16 @@ void db_table_create_setup::CheckReferences(const IDBTables* tables) {
       bool exist = std::find_if(fields.begin(), fields.end(),
                                 [&tref](const db_variable& v) {
                                   return v.fname == tref.fname;
-                                }) != fields.end();
+                                })
+                   != fields.end();
       if (exist) {
         const db_fields_collection* ffields =
             tables->GetFieldsCollection(tref.foreign_table);
         exist = std::find_if(ffields->begin(), ffields->end(),
                              [&tref](const db_variable& v) {
                                return v.fname == tref.foreign_fname;
-                             }) != ffields->end();
+                             })
+                != ffields->end();
         if (!exist) {
           error.SetError(ERROR_DB_REFER_FIELD,
                          "Неверное имя внешнего поля для reference.\n"

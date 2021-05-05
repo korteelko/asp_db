@@ -9,7 +9,7 @@
  * This library is distributed under the MIT License.
  * See LICENSE file in the project root for full license information.
  */
-#include "Logging.h"
+#include "asp_utils/Logging.h"
 #include "db_connection.h"
 #include "db_connection_manager.h"
 #include "library_structs.h"
@@ -143,8 +143,8 @@ int add_data(DBConnectionManager& dbm) {
   if (slt.size()) {
     Logging::Append(io_loglvl::info_logs,
                     "В БД храниться информация о "
-                    "нескольких книгах '" +
-                        tolstoy.name + "'\n\t");
+                    "нескольких книгах '"
+                        + tolstoy.name + "'\n\t");
     for (const auto& book : slt[0].books)
       Logging::Append(io_loglvl::info_logs, book);
     Logging::Append(io_loglvl::info_logs, join_container(slt[0].books, ", "));

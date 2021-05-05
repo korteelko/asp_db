@@ -8,14 +8,15 @@
  * See LICENSE file in the project root for full license information.
  */
 #include "db_expression.h"
-#include "Logging.h"
+#include "asp_utils/Logging.h"
 
+#include <array>
 #include <future>
 
 namespace asp_db {
 std::string DataFieldToStr(db_variable_type t, const std::string& v) {
-  return (t == db_variable_type::type_char_array ||
-          t == db_variable_type::type_text)
+  return (t == db_variable_type::type_char_array
+          || t == db_variable_type::type_text)
              ? "'" + v + "'"
              : v;
 }
@@ -111,8 +112,8 @@ std::string where_node_data::GetString() const {
       // это не рантайм ошибка, это ошибка программиста
       Logging::Append(io_loglvl::info_logs,
                       "Ошибка приведения типа для "
-                      "узла условий where. line" +
-                          STRING_DEBUG_INFO);
+                      "узла условий where. line"
+                          + STRING_DEBUG_INFO);
     }
   }
   return GetTablePair().second;
@@ -124,8 +125,8 @@ where_table_pair where_node_data::GetTablePair() const {
   } catch (std::bad_variant_access&) {
     Logging::Append(io_loglvl::info_logs,
                     "Ошибка приведения типа для узла условий where. "
-                    "Функция GetTablePair вернёт NullObject\n" +
-                        STRING_DEBUG_INFO);
+                    "Функция GetTablePair вернёт NullObject\n"
+                        + STRING_DEBUG_INFO);
   }
   return db_table_pair(db_variable_type::type_empty, "");
 }
@@ -136,8 +137,8 @@ db_operator_wrapper where_node_data::GetOperatorWrapper() const {
   } catch (std::bad_variant_access&) {
     Logging::Append(io_loglvl::info_logs,
                     "Ошибка приведения типа для узла условий where. "
-                    "Функция GetOperatorWrapper вернёт NullObject\n" +
-                        STRING_DEBUG_INFO);
+                    "Функция GetOperatorWrapper вернёт NullObject\n"
+                        + STRING_DEBUG_INFO);
   }
   return db_operator_wrapper(db_operator_t::op_empty);
 }
@@ -195,7 +196,7 @@ std::string expression_node<where_node_data>::GetString(
     throw db_variable_exception(
         "Не обрабатываемый тип данных для where_node_data");
   }
-  std::array<std::future<std::string>, 2> get_str{
+  std::array<std::future<std::string>, 2> get_str = {
       std::async(std::launch::async,
                  [&]() {
                    return (left.get() != nullptr) ? left->GetString(dts)

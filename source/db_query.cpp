@@ -9,7 +9,7 @@
  */
 #include "db_query.h"
 
-#include "Logging.h"
+#include "asp_utils/Logging.h"
 #include "db_connection.h"
 
 namespace asp_db {

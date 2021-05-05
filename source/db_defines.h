@@ -16,15 +16,15 @@
 
 #include <stdint.h>
 
-#include <deque>
+#include <map>
 #include <string>
 #include <type_traits>
 #include <vector>
 
 #include <assert.h>
 
-#include "Common.h"
-#include "ErrorWrap.h"
+#include "asp_utils/Common.h"
+#include "asp_utils/ErrorWrap.h"
 #include "db_append_functor.h"
 
 // todo: remove codes to ErrorWrap.h
@@ -63,6 +63,7 @@
 #define ERROR_DB_SAVE_POINT_MSG "database save point error "
 
 namespace asp_db {
+using namespace asp_utils;
 /**
  * \brief Макро на открытие приватных методов класса
  *   для другого класса.
@@ -163,6 +164,7 @@ struct db_variable {
   struct db_variable_flags {
    public:
     db_variable_flags() = default;
+    db_variable_flags(const std::map<std::string, bool>& flags);
 
    public:
     /** \brief Значение явдяется первичным ключом */
@@ -276,8 +278,8 @@ struct db_variable {
         } else {
           // ошибка формата строки
           throw db_variable_exception(
-              std::string("Ошибка формата строки в функции TranslateToVector") +
-              "\nВход функции: " + str);
+              std::string("Ошибка формата строки в функции TranslateToVector")
+              + "\nВход функции: " + str);
         }
       } else {
         break;
@@ -309,8 +311,8 @@ struct field2str {
     }
     throw db_variable_exception(
         "Несоответствие приведения типов для времени/даты"
-        "\nКод типа: " +
-        std::to_string((uint32_t)type));
+        "\nКод типа: "
+        + std::to_string((uint32_t)type));
   }
   /**
    * \brief Перегрузка функции приведения данных контейнера к строковому

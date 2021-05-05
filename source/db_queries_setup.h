@@ -14,8 +14,8 @@
 #ifndef _DATABASE__DB_QUERIES_SETUP_H_
 #define _DATABASE__DB_QUERIES_SETUP_H_
 
-#include "Common.h"
-#include "ErrorWrap.h"
+#include "asp_utils/Common.h"
+#include "asp_utils/ErrorWrap.h"
 #include "db_defines.h"
 #include "db_expression.h"
 

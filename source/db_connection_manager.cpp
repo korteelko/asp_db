@@ -109,7 +109,7 @@ mstatus_t DBConnectionManager::CheckConnection() {
         error_.Reset();
       if (connection->IsOpen())
         connection->CloseConnection();
-      if (connection->GetErrorCode())
+      if (connection->GetError())
         connection->LogError();
     } else {
       error_.SetError(ERROR_DB_CONNECTION, "Ошибка копирования подключения");
@@ -199,14 +199,6 @@ tables_->GetTableCode<model_info>())); if (dds)
 }
 */
 
-merror_t DBConnectionManager::GetError() {
-  return error_.GetErrorCode();
-}
-
-mstatus_t DBConnectionManager::GetStatus() {
-  return status_;
-}
-
 std::string DBConnectionManager::GetErrorMessage() {
   return error_.GetMessage();
 }
@@ -221,7 +213,7 @@ mstatus_t DBConnectionManager::deleteRowsImp(
 }
 
 DBConnectionManager::DBConnectionManager(const IDBTables* tables)
-    : tables_(tables) {}
+    : BaseObject(STATUS_DEFAULT), tables_(tables) {}
 
 void DBConnectionManager::initDBConnection() {
   std::unique_lock<SharedMutex> lock(connect_init_lock_);

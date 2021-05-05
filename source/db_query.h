@@ -10,7 +10,7 @@
 #ifndef _DATABASE__DB_QUERY_H_
 #define _DATABASE__DB_QUERY_H_
 
-#include "ErrorWrap.h"
+#include "asp_utils/ErrorWrap.h"
 #include "db_defines.h"
 #include "db_queries_setup.h"
 #include "db_queries_setup_select.h"

@@ -15,9 +15,10 @@
 #ifndef _DATABASE__DB_CONNECTION_H_
 #define _DATABASE__DB_CONNECTION_H_
 
-#include "Common.h"
-#include "ErrorWrap.h"
-#include "Logging.h"
+#include "asp_utils/Base.h"
+#include "asp_utils/Common.h"
+#include "asp_utils/ErrorWrap.h"
+#include "asp_utils/Logging.h"
 #include "db_defines.h"
 #include "db_queries_setup.h"
 #include "db_queries_setup_select.h"
@@ -86,7 +87,7 @@ struct db_parameters {
  * \brief Абстрактный класс подключения к БД
  * \todo Может ещё интерфейс сделать, а потом абстрактный класс
  * */
-class DBConnection {
+class DBConnection : public BaseObject {
   ADD_TEST_CLASS(DBConnectionProxy)
 
  public:
@@ -161,11 +162,7 @@ class DBConnection {
   /** \brief Обновить строки БД */
   virtual mstatus_t UpdateRows(const db_query_update_setup& update_data) = 0;
 
-  mstatus_t GetStatus() const;
-  merror_t GetErrorCode() const;
   bool IsOpen() const;
-  /** \brief залогировать ошибку */
-  void LogError();
 
  protected:
   /* todo: add to parameters of constructor link to class
@@ -243,11 +240,6 @@ class DBConnection {
                     const std::string& msg);
 
  protected:
-  ErrorWrap error_;
-  /**
-   * \brief Статус подключения
-   * */
-  mstatus_t status_ = STATUS_DEFAULT;
   /**
    * \brief Параметры подключения к базе данных
    * */

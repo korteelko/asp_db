@@ -254,7 +254,7 @@ void DBConnectionPostgre::CloseConnection() {
     // если собирали транзакцию - закрыть
     if (pqxx_work.IsAvailable())
       pqxx_work.GetTransaction()->exec("commit;");
-    pqxx_work.pconnect_->disconnect();
+    pqxx_work.pconnect_->close();
     pqxx_work.ReleaseConnection();
     is_connected_ = false;
     error_.Reset();
@@ -346,7 +346,7 @@ mstatus_t DBConnectionPostgre::GetTableFormat(db_table t,
     for (pqxx::const_result_iterator::reference row : constrains) {
       // массив индексов
       std::vector<int> indexes;
-      auto conkey = row["conkey"];
+      pqxx::row::const_iterator conkey = row["conkey"];
       if (conkey != row.end()) {
         indexes.clear();
         std::string indexes_str = conkey.as<std::string>();
@@ -358,7 +358,7 @@ mstatus_t DBConnectionPostgre::GetTableFormat(db_table t,
           break;
         }
         // такс, здесь храним имена колонок, которые достанем из ряда row
-        auto ct = row["contype"];
+        pqxx::row::const_iterator ct = row["contype"];
         if (ct != row.end()) {
           char cs = '!';
           std::string tmp = ct.as<std::string>();
@@ -388,7 +388,7 @@ mstatus_t DBConnectionPostgre::GetTableFormat(db_table t,
               if (!name.empty()) {
                 try {
                   fk_UpDel ud;
-                  auto c = row["confupdtype"];
+                  pqxx::row::const_iterator c = row["confupdtype"];
                   if (c != row.end()) {
                     tmp = c.as<std::string>();
                     ud.up = postgresql_impl::GetReferenceAct(
@@ -446,7 +446,7 @@ mstatus_t DBConnectionPostgre::GetTableFormat(db_table t,
     for (pqxx::const_result_iterator::reference row : fkeys) {
       bool success = false;
       // таблица со ссылкой
-      auto row_it = row["column_name"];
+      pqxx::row::const_iterator row_it = row["column_name"];
       std::string col_name = "";
       if (row_it != row.end()) {
         col_name = row_it.as<std::string>();
@@ -557,7 +557,7 @@ mstatus_t DBConnectionPostgre::SelectRows(
     db_query_basesetup::field_index ind = 0;
     for (const auto& field : select_data.fields) {
       std::string fieldname = field.fname;
-      if (row[fieldname] != row.end())
+      if (static_cast<pqxx::row::const_iterator>(row[fieldname]) != row.end())
         rval.emplace(ind, row[fieldname].c_str());
       ++ind;
     }
@@ -770,7 +770,7 @@ void DBConnectionPostgre::execGetColumnInfo(
     pqxx::result trres(tr->exec(sstr.str()));
     if (!trres.empty()) {
       for (const auto& x : trres) {
-        auto row = x["column_name"];
+        pqxx::row::const_iterator row = x["column_name"];
         if (row != x.end()) {
           std::string name = trim_str(row.as<std::string>());
           row = x["data_type"];

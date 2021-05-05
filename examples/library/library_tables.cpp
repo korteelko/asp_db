@@ -32,16 +32,17 @@ std::map<db_table, std::string> str_tables = {
 const db_fields_collection book_fields = {
     db_variable(TABLE_FIELD_PAIR(BOOK_ID),
                 db_variable_type::type_autoinc,
-                {.is_primary_key = true, .can_be_null = false}),
+                db_variable::db_variable_flags(
+                    {{"is_primary_key", true}, {"can_be_null", false}})),
     db_variable(TABLE_FIELD_PAIR(BOOK_TITLE),
                 db_variable_type::type_text,
-                {.can_be_null = false}),
+                db_variable::db_variable_flags({{"can_be_null", false}})),
     db_variable(TABLE_FIELD_PAIR(BOOK_PUB_YEAR),
                 db_variable_type::type_int,
-                {.can_be_null = false}),
+                db_variable::db_variable_flags({{"can_be_null", false}})),
     db_variable(TABLE_FIELD_PAIR(BOOK_LANG),
                 db_variable_type::type_int,
-                {.can_be_null = false}),
+                db_variable::db_variable_flags({{"can_be_null", false}})),
 };
 static const db_table_create_setup::uniques_container book_uniques = {
     {TABLE_FIELD_NAME(BOOK_TITLE), TABLE_FIELD_NAME(BOOK_PUB_YEAR)}};
@@ -53,23 +54,25 @@ static const db_table_create_setup book_create_setup(table_book,
 /*
  * TRANSLATIONS
  */
-const db_fields_collection translation_fields = {
+const db_fields_collection translation_fields{
     db_variable(TABLE_FIELD_PAIR(TRANS_ID),
                 db_variable_type::type_autoinc,
-                {.is_primary_key = true, .can_be_null = false}),
+                db_variable::db_variable_flags(
+                    {{"is_primary_key", true}, {"can_be_null", false}})),
     // reference to book(fk)
     db_variable(TABLE_FIELD_PAIR(TRANS_BOOK_ID),
                 db_variable_type::type_int,
-                {.is_reference = true, .can_be_null = false}),
+                db_variable::db_variable_flags(
+                    {{"is_reference ", true}, {"can_be_null", false}})),
     db_variable(TABLE_FIELD_PAIR(TRANS_LANG),
                 db_variable_type::type_int,
-                {.can_be_null = false}),
+                db_variable::db_variable_flags({{"can_be_null", false}})),
     db_variable(TABLE_FIELD_PAIR(TRANS_TRANS_TITLE),
                 db_variable_type::type_text,
-                {.can_be_null = false}),
+                db_variable::db_variable_flags({{"can_be_null", false}})),
     db_variable(TABLE_FIELD_PAIR(TRANS_TRANSLATORS),
                 db_variable_type::type_text,
-                {.can_be_null = false}),
+                db_variable::db_variable_flags({{"can_be_null", false}})),
 };
 static const db_table_create_setup::uniques_container tr_uniques = {
     {{TABLE_FIELD_NAME(TRANS_BOOK_ID), TABLE_FIELD_NAME(TRANS_LANG),
@@ -93,10 +96,11 @@ static const db_table_create_setup translation_create_setup(
 const db_fields_collection author_fields = {
     db_variable(TABLE_FIELD_PAIR(AUTHOR_ID),
                 db_variable_type::type_autoinc,
-                {.is_primary_key = true, .can_be_null = false}),
+                db_variable::db_variable_flags(
+                    {{"is_primary_key", true}, {"can_be_null", false}})),
     db_variable(TABLE_FIELD_PAIR(AUTHOR_NAME),
                 db_variable_type::type_text,
-                {.can_be_null = false}),
+                db_variable::db_variable_flags({{"can_be_null", false}})),
     db_variable(TABLE_FIELD_PAIR(AUTHOR_BORN_YEAR),
                 db_variable_type::type_int,
                 {}),
@@ -105,7 +109,7 @@ const db_fields_collection author_fields = {
                 {}),
     db_variable(TABLE_FIELD_PAIR(AUTHOR_BOOKS),
                 db_variable_type::type_text,
-                {.is_array = true},
+                db_variable::db_variable_flags({{"is_array", false}}),
                 0),
 };
 static const db_table_create_setup::uniques_container aut_uniques = {

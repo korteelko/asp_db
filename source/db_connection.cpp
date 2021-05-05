@@ -25,16 +25,16 @@ std::string db_parameters::GetInfo() const {
   std::string info = "Параметры базы данных:\n";
   if (is_dry_run)
     return info += "dummy connection\n";
-  return info + db_client_to_string(supplier) + "\n\tname: " + name +
-         "\n\tusername: " + username + "\n\thost: " + host + ":" +
-         std::to_string(port) + "\n";
+  return info + db_client_to_string(supplier) + "\n\tname: " + name
+         + "\n\tusername: " + username + "\n\thost: " + host + ":"
+         + std::to_string(port) + "\n";
 }
 
 /* DBConnection */
 DBConnection::DBConnection(const IDBTables* tables,
                            const db_parameters& parameters,
                            PrivateLogging* logger)
-    : status_(STATUS_DEFAULT),
+    : BaseObject(STATUS_DEFAULT),
       parameters_(parameters),
       tables_(tables),
       logger_(logger),
@@ -46,7 +46,10 @@ DBConnection::DBConnection(const IDBTables* tables,
 }
 
 DBConnection::DBConnection(const DBConnection& r)
-    : parameters_(r.parameters_), tables_(r.tables_), logger_(r.logger_) {}
+    : BaseObject(STATUS_DEFAULT),
+      parameters_(r.parameters_),
+      tables_(r.tables_),
+      logger_(r.logger_) {}
 
 DBConnection& DBConnection::operator=(const DBConnection& r) {
   if (&r != this) {
@@ -64,20 +67,8 @@ DBConnection& DBConnection::operator=(const DBConnection& r) {
 
 DBConnection::~DBConnection() {}
 
-mstatus_t DBConnection::GetStatus() const {
-  return status_;
-}
-
-merror_t DBConnection::GetErrorCode() const {
-  return error_.GetErrorCode();
-}
-
 bool DBConnection::IsOpen() const {
   return is_connected_;
-}
-
-void DBConnection::LogError() {
-  error_.LogIt();
 }
 
 /* setup quries text */
@@ -154,8 +145,8 @@ std::stringstream DBConnection::setupInsertString(
       } else {
         Logging::Append(io_loglvl::debug_logs,
                         "Ошибка индекса операции INSERT.\n"
-                        "\tДля таблицы " +
-                            tables_->GetTableName(fields.table));
+                        "\tДля таблицы "
+                            + tables_->GetTableName(fields.table));
       }
     }
   }
@@ -226,9 +217,9 @@ std::string DBConnection::db_reference_to_string(const db_reference& ref) {
   if (!ew) {
     if (ref.is_foreign_key)
       str += "FOREIGN KEY ";
-    str += "(" + ref.fname + ") REFERENCES " +
-           tables_->GetTableName(ref.foreign_table) + " (" + ref.foreign_fname +
-           ")";
+    str += "(" + ref.fname + ") REFERENCES "
+           + tables_->GetTableName(ref.foreign_table) + " (" + ref.foreign_fname
+           + ")";
     if (ref.has_on_delete)
       str += " ON DELETE " + ref.GetReferenceActString(ref.delete_method);
     if (ref.has_on_update)

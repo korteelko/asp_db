@@ -8,7 +8,7 @@
  * See LICENSE file in the project root for full license information.
  */
 #include "db_defines.h"
-#include "Logging.h"
+#include "asp_utils/Logging.h"
 #include "db_connection_manager.h"
 
 #include <map>
@@ -40,18 +40,37 @@ db_variable::db_variable(db_variable_id fid,
                          int len)
     : fid(fid), fname(fname), type(type), flags(flags), len(len) {}
 
+db_variable::db_variable_flags::db_variable_flags(
+    const std::map<std::string, bool>& flags) {
+  for (const auto& p : flags) {
+    if (p.first == "is_primary_key") {
+      is_primary_key = p.second;
+    } else if (p.first == "is_reference") {
+      is_reference = p.second;
+    } else if (p.first == "can_be_null") {
+      can_be_null = p.second;
+    } else if (p.first == "can_be_negative") {
+      can_be_negative = p.second;
+    } else if (p.first == "is_array") {
+      is_array = p.second;
+    } else if (p.first == "has_default") {
+      has_default = p.second;
+    }
+  }
+}
+
 merror_t db_variable::CheckYourself() const {
   merror_t ew = ERROR_SUCCESS_T;
   if (fname == NULL) {
     ew = ERROR_DB_VARIABLE;
     Logging::Append(io_loglvl::err_logs,
                     "пустое имя поля таблицы бд" + STRING_DEBUG_INFO);
-  } else if (type == db_variable_type::type_char_array &&
-             (!flags.is_array || len < 1)) {
+  } else if (type == db_variable_type::type_char_array
+             && (!flags.is_array || len < 1)) {
     ew = ERROR_DB_VARIABLE;
     Logging::Append(io_loglvl::err_logs,
-                    "установки поля char array не соответствуют ожиданиям" +
-                        STRING_DEBUG_INFO);
+                    "установки поля char array не соответствуют ожиданиям"
+                        + STRING_DEBUG_INFO);
   } else if (flags.is_array && flags.is_reference) {
     ew = ERROR_DB_VARIABLE;
     Logging::Append(
@@ -63,13 +82,15 @@ merror_t db_variable::CheckYourself() const {
 
 std::string db_variable::TimeToString(tm* tm) {
   char t[16] = {0};
-  snprintf(t, sizeof(t) - 1, "%02d:%02d:%02d", tm->tm_hour, tm->tm_min, tm->tm_sec);
+  snprintf(t, sizeof(t) - 1, "%02d:%02d:%02d", tm->tm_hour, tm->tm_min,
+           tm->tm_sec);
   return std::string(t);
 }
 
 std::string db_variable::DateToString(tm* tm) {
   char d[16] = {0};
-  snprintf(d, sizeof(d) - 1, "%04d-%02d-%02d", tm->tm_hour, tm->tm_min, tm->tm_sec);
+  snprintf(d, sizeof(d) - 1, "%04d-%02d-%02d", tm->tm_hour, tm->tm_min,
+           tm->tm_sec);
   return std::string(d);
 }
 
@@ -133,15 +154,15 @@ merror_t db_reference::CheckYourself() const {
         error = ERROR_DB_VARIABLE;
         Logging::Append(io_loglvl::err_logs,
                         "несоответсвие метода удаления "
-                        "для ссылки. Поле: " +
-                            fname + ". Внешнее поле: " + foreign_fname);
+                        "для ссылки. Поле: "
+                            + fname + ". Внешнее поле: " + foreign_fname);
       }
       if (has_on_update && update_method == db_reference_act::ref_act_not) {
         error = ERROR_DB_VARIABLE;
         Logging::Append(io_loglvl::err_logs,
                         "несоответсвие метода обновления "
-                        "для ссылки. Поле: " +
-                            fname + ". Внешнее поле: " + foreign_fname);
+                        "для ссылки. Поле: "
+                            + fname + ". Внешнее поле: " + foreign_fname);
       }
     } else {
       error = ERROR_DB_VARIABLE;

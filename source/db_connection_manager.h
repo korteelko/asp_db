@@ -13,10 +13,10 @@
 #ifndef _DATABASE__DB_CONNECTION_MANAGER_H_
 #define _DATABASE__DB_CONNECTION_MANAGER_H_
 
-#include "Common.h"
-#include "ErrorWrap.h"
-#include "Logging.h"
-#include "ThreadWrap.h"
+#include "asp_utils/Common.h"
+#include "asp_utils/ErrorWrap.h"
+#include "asp_utils/Logging.h"
+#include "asp_utils/ThreadWrap.h"
 #include "db_connection.h"
 #include "db_defines.h"
 #include "db_queries_setup.h"
@@ -130,7 +130,7 @@ class DBException : public std::exception {
  *
  * В целом класс представляет собой фасад на подключение к БД
  * */
-class DBConnectionManager {
+class DBConnectionManager : public BaseObject {
  public:
   DBConnectionManager(const IDBTables* tables);
   // API DB
@@ -233,8 +233,6 @@ class DBConnectionManager {
    * */
   mstatus_t UpdateTableFormat(db_table dt);
 
-  mstatus_t GetStatus();
-  merror_t GetError();
   std::string GetErrorMessage();
 
  private:
@@ -308,8 +306,6 @@ class DBConnectionManager {
   [[nodiscard]] mstatus_t tryExecuteTransaction(Transaction& tr);
 
  private:
-  ErrorWrap error_;
-  mstatus_t status_;
   /**
    * \brief Мьютекс на подключение к БД
    * */
