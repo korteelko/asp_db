@@ -7,10 +7,11 @@
  * This library is distributed under the MIT License.
  * See LICENSE file in the project root for full license information.
  */
-#include "db_query.h"
+#include "asp_db/db_query.h"
+
+#include "asp_db/db_connection.h"
 
 #include "asp_utils/Logging.h"
-#include "db_connection.h"
 
 namespace asp_db {
 DBQuery::DBQuery(DBConnection* db_ptr)

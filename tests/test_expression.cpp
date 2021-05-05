@@ -2,8 +2,8 @@
 
 #include <map>
 
-#include "db_append_functor.h"
-#include "db_expression.h"
+#include "asp_db/db_append_functor.h"
+#include "asp_db/db_expression.h"
 
 using namespace asp_db::where_nodes;
 using namespace asp_db;

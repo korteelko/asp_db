@@ -6,9 +6,9 @@
  * This library is distributed under the MIT License.
  * See LICENSE file in the project root for full license information.
  */
-#include "db_queries_setup_select.h"
+#include "asp_db/db_queries_setup_select.h"
 
-#include "db_tables.h"
+#include "asp_db/db_tables.h"
 
 namespace asp_db {
 /* db_table_select_setup */

@@ -15,15 +15,16 @@
 #ifndef _DATABASE__DB_CONNECTION_H_
 #define _DATABASE__DB_CONNECTION_H_
 
+#include "asp_db/db_defines.h"
+#include "asp_db/db_queries_setup.h"
+#include "asp_db/db_queries_setup_select.h"
+#include "asp_db/db_query.h"
+#include "asp_db/db_tables.h"
+
 #include "asp_utils/Base.h"
 #include "asp_utils/Common.h"
 #include "asp_utils/ErrorWrap.h"
 #include "asp_utils/Logging.h"
-#include "db_defines.h"
-#include "db_queries_setup.h"
-#include "db_queries_setup_select.h"
-#include "db_query.h"
-#include "db_tables.h"
 
 #include <functional>
 #include <memory>

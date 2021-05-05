@@ -14,10 +14,11 @@
 #ifndef _DATABASE__DB_QUERIES_SETUP_H_
 #define _DATABASE__DB_QUERIES_SETUP_H_
 
+#include "asp_db/db_defines.h"
+#include "asp_db/db_expression.h"
+
 #include "asp_utils/Common.h"
 #include "asp_utils/ErrorWrap.h"
-#include "db_defines.h"
-#include "db_expression.h"
 
 #include <algorithm>
 #include <functional>

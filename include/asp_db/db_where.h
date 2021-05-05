@@ -13,8 +13,8 @@
 #ifndef _DATABASE__DB_WHERE_H_
 #define _DATABASE__DB_WHERE_H_
 
-#include "db_expression.h"
-#include "db_tables.h"
+#include "asp_db/db_expression.h"
+#include "asp_db/db_tables.h"
 
 #include <memory>
 #include <string>

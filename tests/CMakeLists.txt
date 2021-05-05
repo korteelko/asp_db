@@ -28,8 +28,8 @@ if(${GTEST_FOUND})
 
   target_include_directories(${TARGET_ASP_DB_TESTS}
     PRIVATE ${LIBRARY_EXAMPLE_DIR}
-    PRIVATE ${PROJECT_ROOT}/source
-    PRIVATE ${PROJECT_ROOT}/lib/asp_utils/source
+    PRIVATE ${PROJECT_ROOT}/include
+    PRIVATE ${PROJECT_ROOT}/lib/asp_utils/include
     PRIVATE ${GTEST_INCLUDE_DIRS}
   )
 

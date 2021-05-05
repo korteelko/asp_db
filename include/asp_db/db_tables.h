@@ -14,8 +14,8 @@
 #ifndef _DATABASE__DB_TABLES_H_
 #define _DATABASE__DB_TABLES_H_
 
-#include "db_defines.h"
-#include "db_queries_setup.h"
+#include "asp_db/db_defines.h"
+#include "asp_db/db_queries_setup.h"
 
 #include <algorithm>
 #include <exception>

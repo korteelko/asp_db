@@ -10,10 +10,11 @@
 #ifndef _DATABASE__DB_CONNECTION_POSTGRESQL_H_
 #define _DATABASE__DB_CONNECTION_POSTGRESQL_H_
 
+#include "asp_db/db_connection.h"
+
 #include "asp_utils/Common.h"
 #include "asp_utils/ErrorWrap.h"
 #include "asp_utils/Logging.h"
-#include "db_connection.h"
 
 #include <pqxx/pqxx>
 

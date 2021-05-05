@@ -1,6 +1,6 @@
 #include "gtest/gtest.h"
 
-#include "db_connection.h"
+#include "asp_db/db_connection.h"
 
 using namespace asp_db;
 

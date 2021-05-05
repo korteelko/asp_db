@@ -7,11 +7,12 @@
  * This library is distributed under the MIT License.
  * See LICENSE file in the project root for full license information.
  */
-#include "db_queries_setup.h"
+#include "asp_db/db_queries_setup.h"
+
+#include "asp_db/db_connection_manager.h"
+#include "asp_db/db_tables.h"
 
 #include "asp_utils/Logging.h"
-#include "db_connection_manager.h"
-#include "db_tables.h"
 
 #include <algorithm>
 

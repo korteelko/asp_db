@@ -7,7 +7,8 @@
  * This library is distributed under the MIT License.
  * See LICENSE file in the project root for full license information.
  */
-#include "db_expression.h"
+#include "asp_db/db_expression.h"
+
 #include "asp_utils/Logging.h"
 
 #include <array>

@@ -10,10 +10,11 @@
 #ifndef _DATABASE__DB_QUERY_H_
 #define _DATABASE__DB_QUERY_H_
 
+#include "asp_db/db_defines.h"
+#include "asp_db/db_queries_setup.h"
+#include "asp_db/db_queries_setup_select.h"
+
 #include "asp_utils/ErrorWrap.h"
-#include "db_defines.h"
-#include "db_queries_setup.h"
-#include "db_queries_setup_select.h"
 
 #include <memory>
 #include <string>

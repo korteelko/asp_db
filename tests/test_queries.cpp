@@ -1,7 +1,7 @@
-#include "db_queries_setup.h"
-#include "db_queries_setup_select.h"
-#include "db_tables.h"
-#include "db_where.h"
+#include "asp_db/db_queries_setup.h"
+#include "asp_db/db_queries_setup_select.h"
+#include "asp_db/db_tables.h"
+#include "asp_db/db_where.h"
 #include "library_tables.h"
 
 #include "gtest/gtest.h"

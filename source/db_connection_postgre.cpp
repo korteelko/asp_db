@@ -7,13 +7,13 @@
  * This library is distributed under the MIT License.
  * See LICENSE file in the project root for full license information.
  */
-#include "db_connection_postgre.h"
+#include "asp_db/db_connection_postgre.h"
 
-#include "db_append_functor.h"
-#include "db_connection_manager.h"
-#include "db_queries_setup.h"
-#include "db_query.h"
-#include "db_tables.h"
+#include "asp_db/db_append_functor.h"
+#include "asp_db/db_connection_manager.h"
+#include "asp_db/db_queries_setup.h"
+#include "asp_db/db_query.h"
+#include "asp_db/db_tables.h"
 
 #include <algorithm>
 #include <iterator>

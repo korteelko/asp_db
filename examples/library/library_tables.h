@@ -15,7 +15,7 @@
 #ifndef EXAMPLES__LIBRARY_TABLES_H
 #define EXAMPLES__LIBRARY_TABLES_H
 
-#include "db_tables.h"
+#include "asp_db/db_tables.h"
 #include "library_structs.h"
 
 #include <string>

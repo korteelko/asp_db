@@ -33,7 +33,7 @@ add_library(
   ${OPTIONAL_SRC})
 
 target_compile_features(${TARGET_ASP_DB_LIB} PUBLIC cxx_std_20)
-target_include_directories(${TARGET_ASP_DB_LIB} PUBLIC ${SOURCE_ROOT})
+target_include_directories(${TARGET_ASP_DB_LIB} PUBLIC ${ASP_DB_ROOT}/include)
 
 if(WIN32)
   if(NOT ENV{VCPKG_ROOT})

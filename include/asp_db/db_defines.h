@@ -14,7 +14,10 @@
 #ifndef _DATABASE__DB_DEFINES_H_
 #define _DATABASE__DB_DEFINES_H_
 
-#include <stdint.h>
+#include "asp_db/db_append_functor.h"
+
+#include "asp_utils/Common.h"
+#include "asp_utils/ErrorWrap.h"
 
 #include <map>
 #include <string>
@@ -22,10 +25,7 @@
 #include <vector>
 
 #include <assert.h>
-
-#include "asp_utils/Common.h"
-#include "asp_utils/ErrorWrap.h"
-#include "db_append_functor.h"
+#include <stdint.h>
 
 // todo: remove codes to ErrorWrap.h
 /** \brief Ошибка работы с базой данных */

@@ -13,10 +13,11 @@
 #ifndef _DATABASE__DB_EXPRESSION_H_
 #define _DATABASE__DB_EXPRESSION_H_
 
+#include "asp_db/db_defines.h"
+
 #include "asp_utils/Common.h"
 #include "asp_utils/ErrorWrap.h"
 #include "asp_utils/Logging.h"
-#include "db_defines.h"
 
 #include <functional>
 #include <memory>
