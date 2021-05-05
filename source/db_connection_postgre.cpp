@@ -254,7 +254,12 @@ void DBConnectionPostgre::CloseConnection() {
     // если собирали транзакцию - закрыть
     if (pqxx_work.IsAvailable())
       pqxx_work.GetTransaction()->exec("commit;");
+      // fuuuuuuuuu
+  #if defined(OS_WINDOWS)
     pqxx_work.pconnect_->close();
+  #elif defined(OS_UNIX)
+    pqxx_work.pconnect_->disconnect();
+  #endif  // OS_
     pqxx_work.ReleaseConnection();
     is_connected_ = false;
     error_.Reset();

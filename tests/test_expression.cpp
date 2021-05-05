@@ -57,10 +57,10 @@ static const db_fields_collection variables = {
     db_variable(1,
                 "one",
                 db_variable_type::type_autoinc,
-                {.is_primary_key = true, .can_be_null = false}),
-    db_variable(2, "two", db_variable_type::type_text, {.can_be_null = false}),
-    db_variable(3, "three", db_variable_type::type_int, {.can_be_null = false}),
-    db_variable(4, "four", db_variable_type::type_date, {.can_be_null = false}),
+                db_variable::db_variable_flags({{"is_primary_key", true}, {"can_be_null", false}})),
+    db_variable(2, "two", db_variable_type::type_text, db_variable::db_variable_flags({{"can_be_null", false}})),
+    db_variable(3, "three", db_variable_type::type_int, db_variable::db_variable_flags({{"can_be_null", false}})),
+    db_variable(4, "four", db_variable_type::type_date, db_variable::db_variable_flags({{"can_be_null", false}}))
 };
 
 /**
