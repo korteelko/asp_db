@@ -30,6 +30,10 @@ std::string db_parameters::GetInfo() const {
          + std::to_string(port) + "\n";
 }
 
+DBConnection::db_field_info::db_field_info(const std::string& name,
+                                                  db_variable_type type)
+    : name(name), type(type) {}
+
 /* DBConnection */
 DBConnection::DBConnection(const IDBTables* tables,
                            const db_parameters& parameters,

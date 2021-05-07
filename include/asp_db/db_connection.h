@@ -91,6 +91,20 @@ struct db_parameters {
 class DBConnection : public BaseObject {
   ADD_TEST_CLASS(DBConnectionProxy)
 
+  /**
+   * \brief Данные полей таблицы, которые можно из неё вытащить
+   * */
+  struct db_field_info {
+   public:
+    /** \brief Имя поля */
+    std::string name;
+    /** \brief Тип данных */
+    db_variable_type type;
+    // int len;
+   public:
+    db_field_info(const std::string& name, db_variable_type type);
+  };
+
  public:
   DBConnection(const DBConnection& r);
   DBConnection& operator=(const DBConnection& r);

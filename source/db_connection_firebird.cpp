@@ -1,3 +1,4 @@
+
 /**
  * asp_therm - implementation of real gas equations of state
  *
@@ -7,46 +8,28 @@
  * This library is distributed under the MIT License.
  * See LICENSE file in the project root for full license information.
  */
-#include "asp_db/db_connection_postgre.h"
-
-#include "asp_db/db_append_functor.h"
-#include "asp_db/db_connection_manager.h"
-#include "asp_db/db_queries_setup.h"
-#include "asp_db/db_query.h"
-#include "asp_db/db_tables.h"
-
-#include <algorithm>
-#include <iterator>
-#include <map>
-#include <numeric>
-#include <vector>
-
-#include <assert.h>
+#include "asp_db/db_connection_firebird.h"
 
 namespace asp_db {
 #define types_pair(x, y) \
   { x, y }
-// #define reverse_types_pair(x, y) { y, x }
+static DBConnectionFireBird::_firebird_work::IMaster* master = fb_get_master_interface();
 
-/* примеры использования можно посмотреть на github, в репке Jeroen Vermeulen:
-     https://github.com/jtv/libpqxx */
-namespace postgresql_impl {
+namespace firebird_impl {
 /** \brief Мапа соответствий типов данных db_variable_type библиотеки
- *   с PostgreSQL типами данных */
+ *   с FireBird типами данных */
 static std::map<db_variable_type, std::string> str_db_variable_types =
     std::map<db_variable_type, std::string>{
         types_pair(db_variable_type::type_empty, ""),
-        types_pair(db_variable_type::type_autoinc, "SERIAL"),
-        types_pair(db_variable_type::type_uuid, "UUID"),
+        types_pair(db_variable_type::type_autoinc, "BIGINT"),
         types_pair(db_variable_type::type_bool, "BOOL"),
         types_pair(db_variable_type::type_int, "INTEGER"),
         types_pair(db_variable_type::type_long, "BIGINT"),
-        types_pair(db_variable_type::type_real, "REAL"),
+        types_pair(db_variable_type::type_real, "FLOAT"),
         types_pair(db_variable_type::type_date, "DATE"),
         types_pair(db_variable_type::type_time, "TIME"),
-        // todo: в pgAdmin4 'char' выглядит как 'character' или как 'text'
         types_pair(db_variable_type::type_char_array, "CHAR"),
-        types_pair(db_variable_type::type_text, "TEXT"),
+        types_pair(db_variable_type::type_text, "CHAR VARYING"),
     };
 /** \brief Найти соответствующий строковому представлению
  *   тип данных приложения
@@ -66,103 +49,18 @@ db_variable_type find_type(const std::string& uppercase_str) {
   return db_variable_type::type_empty;
 }
 
-/**
- * \brief Функтор для сетапа полей деревьев условий для
- *   PostgreSQL СУБД
- * */
-struct where_string_set {
-  /* todo: может несколько изменить идею преобразования строк
-   *   к более обобщённой, через мапу функций или т.п.:
-   * static std::map<db_variable_type,
-   *                 std::function<std::string(const std::string & )>>
-   *     fmap = {
-   *   {db_variable_type::type_date, DBConnectionPostgre::DateToPostgreDate},
-   *   {db_variable_type::type_time, DBConnectionPostgre::TimeToPostgreTime},
-   *   ...
-   * };`
-   */
-
-  where_string_set(pqxx::nontransaction* tr) : tr(tr) {}
-  /**
-   * \brief Преобразование данных поля к читаемому postgres
-   * */
-  std::string operator()(db_variable_type t, const std::string& v) {
-    if (t == db_variable_type::type_date) {
-      return DBConnectionPostgre::DateToPostgreDate(v);
-    } else if (t == db_variable_type::type_time) {
-      return DBConnectionPostgre::TimeToPostgreTime(v);
-    }
-    bool need_quote = (t == db_variable_type::type_char_array
-                       || t == db_variable_type::type_text);
-    // для опции dry_run указатель не проинциализирован
-    return (need_quote && tr) ? tr->quote(v) : v;
-  }
-
- public:
-  /**
-   * \brief Указатель на pqxx транзакцию
-   * */
-  pqxx::nontransaction* tr;
-};
-
-/** \brief Распарсить строку достать из неё все целые числа */
-void StringToIntNumbers(const std::string& str, std::vector<int>* result) {
-  std::string num = "";
-  auto it = str.begin();
-  while (it != str.end()) {
-    if (std::isdigit(*it)) {
-      num += *it;
-    } else {
-      if (!num.empty()) {
-        int n = atoi(num.c_str());
-        // полученные индексы начинаются с 1, не с 0
-        result->push_back(n - 1);
-        num = "";
-      }
-    }
-    ++it;
-  }
-}
-
-/** \brief Получить update|delete действие по символу от БД
- * \note update action code: a = no action, r = restrict,
- *   //   c = cascade, n = set null, d = set default
- */
-db_reference_act GetReferenceAct(char postgre_symbol) {
-  db_reference_act act = db_reference_act::ref_act_not;
-  switch (postgre_symbol) {
-    case 'a':
-      act = db_reference_act::ref_act_not;
-      break;
-    case 'n':
-      act = db_reference_act::ref_act_set_null;
-      break;
-    case 'c':
-      act = db_reference_act::ref_act_cascade;
-      break;
-    case 'r':
-      act = db_reference_act::ref_act_restrict;
-      break;
-    default:
-      throw DBException(ERROR_DB_REFER_FIELD,
-                        "Не зарегистрированное действие для внешнего ключа");
-  }
-  return act;
-}
-}  // namespace postgresql_impl
-
-DBConnectionPostgre::DBConnectionPostgre(const IDBTables* tables,
+DBConnectionFireBird::DBConnectionFireBird(const IDBTables* tables,
                                          const db_parameters& parameters,
                                          PrivateLogging* logger)
     : DBConnection(tables, parameters, logger) {}
 
-DBConnectionPostgre::DBConnectionPostgre(const DBConnectionPostgre& r)
+DBConnectionFireBird::DBConnectionFireBird(const DBConnectionPostgre& r)
     : DBConnection(r) {
-  pqxx_work.ReleaseConnection();
+  firebird_work.ReleaseConnection();
 }
 
-DBConnectionPostgre& DBConnectionPostgre::operator=(
-    const DBConnectionPostgre& r) {
+DBConnectionFireBird& DBConnectionFireBird::operator=(
+    const DBConnectionFireBird& r) {
   if (&r != this) {
     // копируем
     parameters_ = r.parameters_;
@@ -172,48 +70,49 @@ DBConnectionPostgre& DBConnectionPostgre::operator=(
     error_.Reset();
     status_ = STATUS_DEFAULT;
     is_connected_ = false;
-    pqxx_work.ReleaseConnection();
+    firebird_work.ReleaseConnection();
   }
   return *this;
 }
 
-DBConnectionPostgre::~DBConnectionPostgre() {
-  CloseConnection();
+std::shared_ptr<DBConnection> DBConnectionFireBird::CloneConnection() {
+  return std::shared_ptr<DBConnectionFireBird>(new DBConnectionFireBird(*this));
 }
 
-std::shared_ptr<DBConnection> DBConnectionPostgre::CloneConnection() {
-  return std::shared_ptr<DBConnectionPostgre>(new DBConnectionPostgre(*this));
+std::shared_ptr<DBConnection> DBConnectionFireBird::CloneConnection() {
+  return std::shared_ptr<DBConnectionFireBird>(new DBConnectionPostgre(*this));
 }
 
-mstatus_t DBConnectionPostgre::AddSavePoint(const db_save_point& sp) {
+mstatus_t DBConnectionFireBird::AddSavePoint(const db_save_point& sp) {
   return exec_wrap<
       db_save_point, void,
-      std::stringstream (DBConnectionPostgre::*)(const db_save_point&),
-      void (DBConnectionPostgre::*)(const std::stringstream&, void*)>(
-      sp, nullptr, &DBConnectionPostgre::setupAddSavePointString,
-      &DBConnectionPostgre::execAddSavePoint);
+      std::stringstream (DBConnectionFireBird::*)(const db_save_point&),
+      void (DBConnectionFireBird::*)(const std::stringstream&, void*)>(
+      sp, nullptr, &DBConnectionFireBird::setupAddSavePointString,
+      &DBConnectionFireBird::execAddSavePoint);
 }
 
-void DBConnectionPostgre::RollbackToSavePoint(const db_save_point& sp) {
+void DBConnectionFireBird::RollbackToSavePoint(const db_save_point& sp) {
   exec_wrap<db_save_point, void,
-            std::stringstream (DBConnectionPostgre::*)(const db_save_point&),
-            void (DBConnectionPostgre::*)(const std::stringstream&, void*)>(
-      sp, nullptr, &DBConnectionPostgre::setupRollbackToSavePoint,
-      &DBConnectionPostgre::execRollbackToSavePoint);
+            std::stringstream (DBConnectionFireBird::*)(const db_save_point&),
+            void (DBConnectionFireBird::*)(const std::stringstream&, void*)>(
+      sp, nullptr, &DBConnectionFireBird::setupRollbackToSavePoint,
+      &DBConnectionFireBird::execRollbackToSavePoint);
 }
 
-mstatus_t DBConnectionPostgre::SetupConnection() {
+mstatus_t DBConnectionFireBird::SetupConnection() {
   auto connect_str = setupConnectionString();
   if (!isDryRun()) {
     try {
-      pqxx_work.InitConnection(connect_str);
+      firebird_work.InitConnection(connect_str);
       if (!error_.GetErrorCode()) {
-        if (pqxx_work.IsAvailable()) {
+        if (firebird_work.IsAvailable()) {
           status_ = STATUS_OK;
           is_connected_ = true;
           // отметим начало транзакции
           // todo: вероятно в отдельную функцию вынести
-          pqxx_work.GetTransaction()->exec("begin;");
+
+           pqxx_work.GetTransaction()->exec("begin;");
           if (IS_DEBUG_MODE)
             Logging::Append(io_loglvl::debug_logs,
                             "Подключение к БД " + parameters_.name);
@@ -245,7 +144,7 @@ mstatus_t DBConnectionPostgre::SetupConnection() {
   return status_;
 }
 
-void DBConnectionPostgre::CloseConnection() {
+void DBConnectionFireBird::CloseConnection() {
   if (pqxx_work.pconnect_) {
     // если собирали транзакцию - закрыть
     if (pqxx_work.IsAvailable())
@@ -270,12 +169,12 @@ void DBConnectionPostgre::CloseConnection() {
   }
 }
 
-mstatus_t DBConnectionPostgre::IsTableExists(db_table t, bool* is_exists) {
+mstatus_t DBConnectionFireBird::IsTableExists(db_table t, bool* is_exists) {
   return exec_wrap<
-      db_table, bool, std::stringstream (DBConnectionPostgre::*)(db_table),
-      void (DBConnectionPostgre::*)(const std::stringstream&, bool*)>(
-      t, is_exists, &DBConnectionPostgre::setupTableExistsString,
-      &DBConnectionPostgre::execIsTableExists);
+      db_table, bool, std::stringstream (DBConnectionFireBird::*)(db_table),
+      void (DBConnectionFireBird::*)(const std::stringstream&, bool*)>(
+      t, is_exists, &DBConnectionFireBird::setupTableExistsString,
+      &DBConnectionFireBird::execIsTableExists);
 }
 
 // todo: в методе смешаны уровни абстракции,
@@ -289,7 +188,7 @@ mstatus_t DBConnectionPostgre::IsTableExists(db_table t, bool* is_exists) {
  *          \ <_. )
  *     ~~~~~~~~~~~~~~~~~~~~
  */
-mstatus_t DBConnectionPostgre::GetTableFormat(db_table t,
+mstatus_t DBConnectionFireBird::GetTableFormat(db_table t,
                                               db_table_create_setup* fields) {
   assert(0 && "не оттестированно");
   // такс, собираем
@@ -297,11 +196,11 @@ mstatus_t DBConnectionPostgre::GetTableFormat(db_table t,
   std::vector<db_field_info> exists_cols;
   mstatus_t res =
       exec_wrap<db_table, std::vector<db_field_info>,
-                std::stringstream (DBConnectionPostgre::*)(db_table),
-                void (DBConnectionPostgre::*)(const std::stringstream&,
+                std::stringstream (DBConnectionFireBird::*)(db_table),
+                void (DBConnectionFireBird::*)(const std::stringstream&,
                                               std::vector<db_field_info>*)>(
-          t, &exists_cols, &DBConnectionPostgre::setupGetColumnsInfoString,
-          &DBConnectionPostgre::execGetColumnInfo);
+          t, &exists_cols, &DBConnectionFireBird::setupGetColumnsInfoString,
+          &DBConnectionFireBird::execGetColumnInfo);
   if (is_status_ok(res)) {
     fields->table = t;
     auto table_name = tables_->GetTableName(t);
@@ -336,11 +235,11 @@ mstatus_t DBConnectionPostgre::GetTableFormat(db_table t,
   //   ограничения начинаем
   pqxx::result constrains;
   res = exec_wrap<db_table, pqxx::result,
-                  std::stringstream (DBConnectionPostgre::*)(db_table),
-                  void (DBConnectionPostgre::*)(const std::stringstream&,
+                  std::stringstream (DBConnectionFireBird::*)(db_table),
+                  void (DBConnectionFireBird::*)(const std::stringstream&,
                                                 pqxx::result*)>(
-      t, &constrains, &DBConnectionPostgre::setupGetConstrainsString,
-      &DBConnectionPostgre::execGetConstrainsString);
+      t, &constrains, &DBConnectionFireBird::setupGetConstrainsString,
+      &DBConnectionFireBird::execGetConstrainsString);
   // обход по ограничениям - первичным и внешним ключам, уникальным комплексам
   merror_t error = ERROR_SUCCESS_T;
   if (is_status_ok(res)) {
@@ -437,11 +336,11 @@ mstatus_t DBConnectionPostgre::GetTableFormat(db_table t,
   pqxx::result fkeys;
   if (!error)
     res = exec_wrap<db_table, pqxx::result,
-                    std::stringstream (DBConnectionPostgre::*)(db_table),
-                    void (DBConnectionPostgre::*)(const std::stringstream&,
+                    std::stringstream (DBConnectionFireBird::*)(db_table),
+                    void (DBConnectionFireBird::*)(const std::stringstream&,
                                                   pqxx::result*)>(
-        t, &fkeys, &DBConnectionPostgre::setupGetForeignKeys,
-        &DBConnectionPostgre::execGetForeignKeys);
+        t, &fkeys, &DBConnectionFireBird::setupGetForeignKeys,
+        &DBConnectionFireBird::execGetForeignKeys);
   if (!error && is_status_ok(res)) {
     // foreign_column_name, foreign_table_name
     for (pqxx::const_result_iterator::reference row : fkeys) {
@@ -483,76 +382,76 @@ mstatus_t DBConnectionPostgre::GetTableFormat(db_table t,
   return res;
 }
 
-mstatus_t DBConnectionPostgre::CheckTableFormat(
+mstatus_t DBConnectionFireBird::CheckTableFormat(
     const db_table_create_setup& fields) {
   /* todo */
   assert(0);
   return 0;
 }
 
-mstatus_t DBConnectionPostgre::UpdateTable(
+mstatus_t DBConnectionFireBird::UpdateTable(
     const db_table_create_setup& fields) {
   /* todo */
   assert(0);
   return STATUS_HAVE_ERROR;
 }
 
-mstatus_t DBConnectionPostgre::CreateTable(
+mstatus_t DBConnectionFireBird::CreateTable(
     const db_table_create_setup& fields) {
   return exec_wrap<
       db_table_create_setup, void,
-      std::stringstream (DBConnectionPostgre::*)(const db_table_create_setup&),
-      void (DBConnectionPostgre::*)(const std::stringstream&, void*)>(
-      fields, nullptr, &DBConnectionPostgre::setupCreateTableString,
-      &DBConnectionPostgre::execCreateTable);
+      std::stringstream (DBConnectionFireBird::*)(const db_table_create_setup&),
+      void (DBConnectionFireBird::*)(const std::stringstream&, void*)>(
+      fields, nullptr, &DBConnectionFireBird::setupCreateTableString,
+      &DBConnectionFireBird::execCreateTable);
 }
 
-mstatus_t DBConnectionPostgre::DropTable(const db_table_drop_setup& drop) {
+mstatus_t DBConnectionFireBird::DropTable(const db_table_drop_setup& drop) {
   return exec_wrap<
       db_table_drop_setup, void,
-      std::stringstream (DBConnectionPostgre::*)(const db_table_drop_setup&),
-      void (DBConnectionPostgre::*)(const std::stringstream&, void*)>(
-      drop, nullptr, &DBConnectionPostgre::setupDropTableString,
-      &DBConnectionPostgre::execDropTable);
+      std::stringstream (DBConnectionFireBird::*)(const db_table_drop_setup&),
+      void (DBConnectionFireBird::*)(const std::stringstream&, void*)>(
+      drop, nullptr, &DBConnectionFireBird::setupDropTableString,
+      &DBConnectionFireBird::execDropTable);
 }
 
-mstatus_t DBConnectionPostgre::InsertRows(
+mstatus_t DBConnectionFireBird::InsertRows(
     const db_query_insert_setup& insert_data,
     id_container* id_vec) {
   pqxx::result result;
   mstatus_t status = exec_wrap<
       db_query_insert_setup, pqxx::result,
-      std::stringstream (DBConnectionPostgre::*)(const db_query_insert_setup&),
-      void (DBConnectionPostgre::*)(const std::stringstream&, pqxx::result*)>(
-      insert_data, &result, &DBConnectionPostgre::setupInsertString,
-      &DBConnectionPostgre::execInsert);
+      std::stringstream (DBConnectionFireBird::*)(const db_query_insert_setup&),
+      void (DBConnectionFireBird::*)(const std::stringstream&, pqxx::result*)>(
+      insert_data, &result, &DBConnectionFireBird::setupInsertString,
+      &DBConnectionFireBird::execInsert);
   if (id_vec)
     for (pqxx::const_result_iterator::reference row : result)
       id_vec->id_vec.push_back(row[0].as<int>());
   return status;
 }
 
-mstatus_t DBConnectionPostgre::DeleteRows(
+mstatus_t DBConnectionFireBird::DeleteRows(
     const db_query_delete_setup& delete_data) {
   return exec_wrap<
       db_query_delete_setup, void,
-      std::stringstream (DBConnectionPostgre::*)(const db_query_delete_setup&),
-      void (DBConnectionPostgre::*)(const std::stringstream&, void*)>(
-      delete_data, nullptr, &DBConnectionPostgre::setupDeleteString,
-      &DBConnectionPostgre::execDelete);
+      std::stringstream (DBConnectionFireBird::*)(const db_query_delete_setup&),
+      void (DBConnectionFireBird::*)(const std::stringstream&, void*)>(
+      delete_data, nullptr, &DBConnectionFireBird::setupDeleteString,
+      &DBConnectionFireBird::execDelete);
 }
 
-mstatus_t DBConnectionPostgre::SelectRows(
+mstatus_t DBConnectionFireBird::SelectRows(
     const db_query_select_setup& select_data,
     db_query_select_result* result_data) {
   pqxx::result result;
   result_data->values_vec.clear();
   mstatus_t res = exec_wrap<
       db_query_select_setup, pqxx::result,
-      std::stringstream (DBConnectionPostgre::*)(const db_query_select_setup&),
-      void (DBConnectionPostgre::*)(const std::stringstream&, pqxx::result*)>(
-      select_data, &result, &DBConnectionPostgre::setupSelectString,
-      &DBConnectionPostgre::execSelect);
+      std::stringstream (DBConnectionFireBird::*)(const db_query_select_setup&),
+      void (DBConnectionFireBird::*)(const std::stringstream&, pqxx::result*)>(
+      select_data, &result, &DBConnectionFireBird::setupSelectString,
+      &DBConnectionFireBird::execSelect);
   for (pqxx::const_result_iterator::reference row : result) {
     db_query_basesetup::row_values rval;
     db_query_basesetup::field_index ind = 0;
@@ -567,17 +466,17 @@ mstatus_t DBConnectionPostgre::SelectRows(
   return res;
 }
 
-mstatus_t DBConnectionPostgre::UpdateRows(
+mstatus_t DBConnectionFireBird::UpdateRows(
     const db_query_update_setup& update_data) {
   return exec_wrap<
       db_query_update_setup, void,
-      std::stringstream (DBConnectionPostgre::*)(const db_query_update_setup&),
-      void (DBConnectionPostgre::*)(const std::stringstream&, void*)>(
-      update_data, nullptr, &DBConnectionPostgre::setupUpdateString,
-      &DBConnectionPostgre::execUpdate);
+      std::stringstream (DBConnectionFireBird::*)(const db_query_update_setup&),
+      void (DBConnectionFireBird::*)(const std::stringstream&, void*)>(
+      update_data, nullptr, &DBConnectionFireBird::setupUpdateString,
+      &DBConnectionFireBird::execUpdate);
 }
 
-std::string DBConnectionPostgre::setupConnectionString() {
+std::string DBConnectionFireBird::setupConnectionString() {
   std::stringstream connect_ss;
   connect_ss << "dbname = " << parameters_.name << " ";
   connect_ss << "user = " << parameters_.username << " ";
@@ -589,21 +488,21 @@ std::string DBConnectionPostgre::setupConnectionString() {
   return connect_ss.str();
 }
 
-std::stringstream DBConnectionPostgre::setupTableExistsString(db_table t) {
+std::stringstream DBConnectionFireBird::setupTableExistsString(db_table t) {
   std::stringstream select_ss;
   select_ss << "SELECT EXISTS ( SELECT 1 FROM information_schema.tables "
                "WHERE table_schema = 'public' AND table_name = '"
             << tables_->GetTableName(t) << "');";
   return select_ss;
 }
-std::stringstream DBConnectionPostgre::setupGetColumnsInfoString(db_table t) {
+std::stringstream DBConnectionFireBird::setupGetColumnsInfoString(db_table t) {
   std::stringstream select_ss;
   select_ss << "SELECT column_name, data_type FROM INFORMATION_SCHEMA.COLUMNS "
                "WHERE TABLE_NAME = '"
             << tables_->GetTableName(t) << "';";
   return select_ss;
 }
-std::stringstream DBConnectionPostgre::setupGetConstrainsString(db_table t) {
+std::stringstream DBConnectionFireBird::setupGetConstrainsString(db_table t) {
   std::stringstream sstr;
   sstr << "SELECT con.* "
        << "FROM pg_catalog.pg_constraint con "
@@ -616,7 +515,7 @@ std::stringstream DBConnectionPostgre::setupGetConstrainsString(db_table t) {
   return sstr;
 }
 
-std::stringstream DBConnectionPostgre::setupGetForeignKeys(db_table t) {
+std::stringstream DBConnectionFireBird::setupGetForeignKeys(db_table t) {
   std::stringstream sstr;
   sstr << "SELECT "
        << "tc.table_schema, "
@@ -639,7 +538,7 @@ std::stringstream DBConnectionPostgre::setupGetForeignKeys(db_table t) {
   return sstr;
 }
 
-std::stringstream DBConnectionPostgre::setupInsertString(
+std::stringstream DBConnectionFireBird::setupInsertString(
     const db_query_insert_setup& fields) {
   if (fields.values_vec.empty()) {
     error_.SetError(ERROR_DB_VARIABLE, "Нет данных для INSERT операции");
@@ -683,7 +582,7 @@ std::stringstream DBConnectionPostgre::setupInsertString(
   return sstr;
 }
 
-std::stringstream DBConnectionPostgre::setupDeleteString(
+std::stringstream DBConnectionFireBird::setupDeleteString(
     const db_query_delete_setup& fields) {
   std::stringstream sstr;
   postgresql_impl::where_string_set ws(pqxx_work.GetTransaction());
@@ -694,7 +593,7 @@ std::stringstream DBConnectionPostgre::setupDeleteString(
   sstr << ";";
   return sstr;
 }
-std::stringstream DBConnectionPostgre::setupSelectString(
+std::stringstream DBConnectionFireBird::setupSelectString(
     const db_query_select_setup& fields) {
   std::stringstream sstr;
   postgresql_impl::where_string_set ws(pqxx_work.GetTransaction());
@@ -705,7 +604,7 @@ std::stringstream DBConnectionPostgre::setupSelectString(
   sstr << ";";
   return sstr;
 }
-std::stringstream DBConnectionPostgre::setupUpdateString(
+std::stringstream DBConnectionFireBird::setupUpdateString(
     const db_query_update_setup& fields) {
   postgresql_impl::where_string_set ws(pqxx_work.GetTransaction());
   std::stringstream sstr;
@@ -725,27 +624,27 @@ std::stringstream DBConnectionPostgre::setupUpdateString(
   return sstr;
 }
 
-void DBConnectionPostgre::execWithoutReturn(const std::stringstream& sstr) {
+void DBConnectionFireBird::execWithoutReturn(const std::stringstream& sstr) {
   auto tr = pqxx_work.GetTransaction();
   if (tr)
     tr->exec0(sstr.str());
 }
-void DBConnectionPostgre::execWithReturn(const std::stringstream& sstr,
+void DBConnectionFireBird::execWithReturn(const std::stringstream& sstr,
                                          pqxx::result* result) {
   auto tr = pqxx_work.GetTransaction();
   if (tr)
     *result = tr->exec(sstr.str());
 }
 
-void DBConnectionPostgre::execAddSavePoint(const std::stringstream& sstr,
+void DBConnectionFireBird::execAddSavePoint(const std::stringstream& sstr,
                                            void*) {
   execWithoutReturn(sstr);
 }
-void DBConnectionPostgre::execRollbackToSavePoint(const std::stringstream& sstr,
+void DBConnectionFireBird::execRollbackToSavePoint(const std::stringstream& sstr,
                                                   void*) {
   execWithoutReturn(sstr);
 }
-void DBConnectionPostgre::execIsTableExists(const std::stringstream& sstr,
+void DBConnectionFireBird::execIsTableExists(const std::stringstream& sstr,
                                             bool* is_exists) {
   auto tr = pqxx_work.GetTransaction();
   if (tr) {
@@ -762,7 +661,7 @@ void DBConnectionPostgre::execIsTableExists(const std::stringstream& sstr,
 }
 /* todo: так-с, нужно вынести названия служебных столбцов/полей
  *   'column_name' и 'data_type' в енумчик или дефайн */
-void DBConnectionPostgre::execGetColumnInfo(
+void DBConnectionFireBird::execGetColumnInfo(
     const std::stringstream& sstr,
     std::vector<db_field_info>* columns_info) {
   columns_info->clear();
@@ -797,40 +696,40 @@ void DBConnectionPostgre::execGetColumnInfo(
     }
   }
 }
-void DBConnectionPostgre::execGetConstrainsString(const std::stringstream& sstr,
+void DBConnectionFireBird::execGetConstrainsString(const std::stringstream& sstr,
                                                   pqxx::result* result) {
   execWithReturn(sstr, result);
 }
-void DBConnectionPostgre::execGetForeignKeys(const std::stringstream& sstr,
+void DBConnectionFireBird::execGetForeignKeys(const std::stringstream& sstr,
                                              pqxx::result* result) {
   execWithReturn(sstr, result);
 }
-void DBConnectionPostgre::execAddColumn(const std::stringstream& sstr, void*) {
+void DBConnectionFireBird::execAddColumn(const std::stringstream& sstr, void*) {
   execWithoutReturn(sstr);
 }
-void DBConnectionPostgre::execCreateTable(const std::stringstream& sstr,
+void DBConnectionFireBird::execCreateTable(const std::stringstream& sstr,
                                           void*) {
   execWithoutReturn(sstr);
 }
-void DBConnectionPostgre::execDropTable(const std::stringstream& sstr, void*) {
+void DBConnectionFireBird::execDropTable(const std::stringstream& sstr, void*) {
   execWithoutReturn(sstr);
 }
-void DBConnectionPostgre::execInsert(const std::stringstream& sstr,
+void DBConnectionFireBird::execInsert(const std::stringstream& sstr,
                                      pqxx::result* result) {
   execWithReturn(sstr, result);
 }
-void DBConnectionPostgre::execDelete(const std::stringstream& sstr, void*) {
+void DBConnectionFireBird::execDelete(const std::stringstream& sstr, void*) {
   execWithoutReturn(sstr);
 }
-void DBConnectionPostgre::execSelect(const std::stringstream& sstr,
+void DBConnectionFireBird::execSelect(const std::stringstream& sstr,
                                      pqxx::result* result) {
   execWithReturn(sstr, result);
 }
-void DBConnectionPostgre::execUpdate(const std::stringstream& sstr, void*) {
+void DBConnectionFireBird::execUpdate(const std::stringstream& sstr, void*) {
   execWithoutReturn(sstr);
 }
 
-merror_t DBConnectionPostgre::setConstrainVector(
+merror_t DBConnectionFireBird::setConstrainVector(
     const std::vector<int>& indexes,
     const db_fields_collection& fields,
     std::vector<std::string>* output) {
@@ -849,7 +748,7 @@ merror_t DBConnectionPostgre::setConstrainVector(
   return error;
 }
 
-void DBConnectionPostgre::addVariableToString(std::string* str_p,
+void DBConnectionFireBird::addVariableToString(std::string* str_p,
                                               const db_variable& var,
                                               const std::string& value) {
   db_variable_type t = var.type;
@@ -871,7 +770,7 @@ void DBConnectionPostgre::addVariableToString(std::string* str_p,
   }
 }
 
-std::string DBConnectionPostgre::getVariableValue(const db_variable& var,
+std::string DBConnectionFireBird::getVariableValue(const db_variable& var,
                                                   const std::string& value) {
   db_variable_type t = var.type;
   std::string str = "";
@@ -881,16 +780,16 @@ std::string DBConnectionPostgre::getVariableValue(const db_variable& var,
     if (txn)
       str = txn->quote(value) + ", ";
   } else if (t == db_variable_type::type_date) {
-    str = DateToPostgreDate(value) + ", ";
+    str = DateToFireBirdDate(value) + ", ";
   } else if (t == db_variable_type::type_time) {
-    str = TimeToPostgreTime(value) + ", ";
+    str = TimeToFireBirdTime(value) + ", ";
   } else {
     str += value + ", ";
   }
   return str;
 }
 
-std::string DBConnectionPostgre::getOnExistActForInsert(
+std::string DBConnectionFireBird::getOnExistActForInsert(
     insert_on_exists_act act) {
   switch (act) {
     case insert_on_exists_act::do_nothing:
@@ -906,7 +805,7 @@ std::string DBConnectionPostgre::getOnExistActForInsert(
       "Неизвестный тип действия для `ON CONFLICT` условия postgres");
 }
 
-std::string DBConnectionPostgre::db_variable_to_string(const db_variable& dv) {
+std::string DBConnectionFireBird::db_variable_to_string(const db_variable& dv) {
   std::stringstream ss;
   merror_t ew = dv.CheckYourself();
   if (!ew) {
@@ -940,7 +839,7 @@ std::string DBConnectionPostgre::db_variable_to_string(const db_variable& dv) {
   return ss.str();
 }
 
-std::string DBConnectionPostgre::DateToPostgreDate(const std::string& date) {
+std::string DBConnectionFireBird::DateToPostgreDate(const std::string& date) {
   char s[16] = {0};
   if (date.size() > 16)
     throw DBException(ERROR_DB_VARIABLE,
@@ -955,11 +854,11 @@ std::string DBConnectionPostgre::DateToPostgreDate(const std::string& date) {
   return "'" + std::string(s) + "'";
 }
 
-std::string DBConnectionPostgre::TimeToPostgreTime(const std::string& time) {
+std::string DBConnectionFireBird::TimeToPostgreTime(const std::string& time) {
   return "'" + time + "'";
 }
 
-std::string DBConnectionPostgre::PostgreDateToDate(const std::string& pdate) {
+std::string DBConnectionFireBird::PostgreDateToDate(const std::string& pdate) {
   char s[16] = {0};
   if (pdate.size() > 16)
     throw DBException(ERROR_DB_VARIABLE,
@@ -974,7 +873,28 @@ std::string DBConnectionPostgre::PostgreDateToDate(const std::string& pdate) {
   return s;
 }
 
-std::string DBConnectionPostgre::PostgreTimeToTime(const std::string& ptime) {
+std::string DBConnectionFireBird::PostgreTimeToTime(const std::string& ptime) {
   return ptime;
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 }  // namespace asp_db

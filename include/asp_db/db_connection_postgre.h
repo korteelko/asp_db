@@ -34,21 +34,6 @@ namespace asp_db {
  * */
 class DBConnectionPostgre final : public DBConnection {
   ADD_TEST_CLASS(DBConnectionPostgreProxy)
-  /**
-   * \brief Данные полей таблицы, которые можно из неё вытащить
-   *
-   * \warning Это вообще используется?
-   * */
-  struct db_field_info {
-   public:
-    /** \brief Имя поля */
-    std::string name;
-    /** \brief Тип данных */
-    db_variable_type type;
-    // int len;
-   public:
-    db_field_info(const std::string& name, db_variable_type type);
-  };
 
  public:
   DBConnectionPostgre(const IDBTables* tables,
@@ -271,6 +256,8 @@ class DBConnectionPostgre final : public DBConnection {
   /**
    * \brief Аноннимная обёртка над параметрами работы с Postgre:
    *   поключения, транзакции
+   * 
+   * \todo Внести в структуру методы `commit`, `close` и т.п.
    * */
   struct {
    public:
