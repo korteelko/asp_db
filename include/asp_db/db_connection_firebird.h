@@ -139,9 +139,9 @@ class DBConnectionFireBird final : public DBConnection {
 
       } catch (const FbException& e) {
         status_ = STATUS_HAVE_ERROR;
-        if (utl != nullptr) {
+        if (firebird_work.utl != nullptr) {
           char buf[256];
-          utl->formatStatus(buf, sizeof(buf), e.getStatus());
+          firebird_work.utl->formatStatus(buf, sizeof(buf), e.getStatus());
           error_.SetError(ERROR_DB_CONNECTION, buf);
         } else {
           error_.SetError(ERROR_PAIR_DEFAULT(ERROR_DB_CONNECTION));
@@ -157,10 +157,10 @@ class DBConnectionFireBird final : public DBConnection {
         status_ = STATUS_OK;
         // dry_run_ programm setup
         if (sstr_len) {
-          passToLogger(io_loglvl::info_logs, POSTGRE_DRYRUN_LOGGER,
+          passToLogger(io_loglvl::info_logs, FIREBIRD_DRYRUN_LOGGER,
                        "dry_run: " + sstr.str());
         } else {
-          passToLogger(io_loglvl::info_logs, POSTGRE_DRYRUN_LOGGER,
+          passToLogger(io_loglvl::info_logs, FIREBIRD_DRYRUN_LOGGER,
                        "dry_run: 'empty query!'");
         }
       } else {
@@ -273,7 +273,9 @@ class DBConnectionFireBird final : public DBConnection {
         st = master->getStatus();
         prov = master->getDispatcher();
         utl = master->getUtilInterface();
-        fb_status = std::make_unique<ThrowStatusWrapper>(st);
+        // fb_status = std::make_unique<ThrowStatusWrapper>(st);
+        fb_status =
+            std::unique_ptr<ThrowStatusWrapper>(new ThrowStatusWrapper(st));
         status_ = STATUS_OK;
       } else {
         status_ = STATUS_HAVE_ERROR;
@@ -375,7 +377,7 @@ class DBConnectionFireBird final : public DBConnection {
             att->execute(fb_status.get(), tra, 0, sql.c_str(), SAMPLES_DIALECT,
                          NULL, NULL, NULL, NULL);
           } else if constexpr (std::is_same<SQLT, std::stringstream>::value) {
-            att->execute(fb_status.get(), tra, 0, sql.string().c_str(),
+            att->execute(fb_status.get(), tra, 0, sql.str().c_str(),
                          SAMPLES_DIALECT, NULL, NULL, NULL, NULL);
           } else {
             att->execute(fb_status.get(), tra, 0, sql, SAMPLES_DIALECT, NULL,
@@ -419,7 +421,7 @@ class DBConnectionFireBird final : public DBConnection {
                                 SAMPLES_DIALECT,
                                 IStatement::PREPARE_PREFETCH_METADATA);
           } else if constexpr (std::is_same<SQLT, std::stringstream>::value) {
-            stmt = att->prepare(fb_status.get(), tra, 0, sql.string().c_str(),
+            stmt = att->prepare(fb_status.get(), tra, 0, sql.str().c_str(),
                                 SAMPLES_DIALECT,
                                 IStatement::PREPARE_PREFETCH_METADATA);
           } else {
@@ -446,6 +448,22 @@ class DBConnectionFireBird final : public DBConnection {
         error_.SetError(ERROR_DB_CONNECTION, e.what());
       }
       return status;
+    }
+    /**
+     * \brief Получить результат 'prepare' запроса
+     * */
+    void get_result(metadata_t& result) {
+      meta = stmt->getOutputMetadata(fb_status.get());
+      builder = meta->getBuilder(fb_status.get());
+      unsigned cols = meta->getCount(fb_status.get());
+      result.assign(cols, MetaDataField());
+      for (unsigned j = 0; j < cols; ++j) {
+        unsigned t = meta->getType(fb_status.get(), j);
+        if (t == SQL_VARYING || t == SQL_TEXT) {
+          builder->setType(fb_status.get(), j, SQL_TEXT);
+          result[j].name = meta->getField(fb_status.get(), j);
+        }
+      }
     }
     /**
      * \brief Временная регистрация изменений в БД
