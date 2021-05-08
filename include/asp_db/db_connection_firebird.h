@@ -265,26 +265,13 @@ class DBConnectionFireBird final : public DBConnection {
   struct _firebird_work : public BaseObject {
     // using namespace Firebird;
     // typedef std::pair<ITransaction *, ThrowStatusWraper &> transaction_pair;
+    _firebird_work(const _firebird_work&) = delete;
+    _firebird_work& operator=(const _firebird_work&) = delete;
 
    public:
-    _firebird_work(const db_parameters& parameters)
-        : BaseObject(STATUS_DEFAULT), parameters(parameters) {
-      if (master != nullptr) {
-        st = master->getStatus();
-        prov = master->getDispatcher();
-        utl = master->getUtilInterface();
-        // fb_status = std::make_unique<ThrowStatusWrapper>(st);
-        fb_status =
-            std::unique_ptr<ThrowStatusWrapper>(new ThrowStatusWrapper(st));
-        status_ = STATUS_OK;
-      } else {
-        status_ = STATUS_HAVE_ERROR;
-        error_.SetError(ERROR_DB_CONNECTION,
-                        "Инициализация мастера соединения");
-      }
-    }
+    _firebird_work(const db_parameters& parameters);
 
-    ~_firebird_work() { ReleaseConnection(); }
+    ~_firebird_work();
     /**
      * \brief Инициализировать параметры соединения, транзакции
      *
@@ -292,70 +279,16 @@ class DBConnectionFireBird final : public DBConnection {
      * \throw FbException
      * \todo Наверное было бы интересно попробовать использовать coroutine
      * */
-    bool InitConnection(bool read_only = false) {
-      try {
-        if (!read_only) {
-          dpb = utl->getXpbBuilder(fb_status.get(), IXpbBuilder::DPB, NULL, 0);
-          att = prov->attachDatabase(fb_status.get(), parameters.name.c_str(),
-                                     0, NULL);
-        } else {
-          dpb = utl->getXpbBuilder(fb_status.get(), IXpbBuilder::TPB, NULL, 0);
-          dpb->insertTag(fb_status.get(), isc_tpb_read_committed);
-          dpb->insertTag(fb_status.get(), isc_tpb_no_rec_version);
-          dpb->insertTag(fb_status.get(), isc_tpb_wait);
-          dpb->insertTag(fb_status.get(), isc_tpb_read);
-          att = prov->attachDatabase(fb_status.get(), parameters.name.c_str(),
-                                     dpb->getBufferLength(fb_status.get()),
-                                     dpb->getBuffer(fb_status.get()));
-        }
-        // вероятно здесь стандартное 'sysdba' и 'masterkey'
-        dpb->insertString(fb_status.get(), isc_dpb_user_name,
-                          parameters.username.c_str());
-        dpb->insertString(fb_status.get(), isc_dpb_password,
-                          parameters.password.c_str());
-        // TODO: что-то мне не нравится этот кусок
-        tra = att->startTransaction(&fb_status, 0, NULL);
-      } catch (const FbException& e) {
-        status_ = STATUS_HAVE_ERROR;
-        if (utl != nullptr) {
-          char buf[256];
-          utl->formatStatus(buf, sizeof(buf), e.getStatus());
-          error_.SetError(ERROR_DB_CONNECTION, buf);
-        } else {
-          error_.SetError(ERROR_PAIR_DEFAULT(ERROR_DB_CONNECTION));
-        }
-      } catch (const std::exception& e) {
-        status_ = STATUS_HAVE_ERROR;
-        error_.SetError(ERROR_DB_CONNECTION, e.what());
-      }
-      return IsAvailable();
-    }
+    bool InitConnection(bool read_only = false);
     /**
      * \brief Освободить параметры подключения
      * */
-    void ReleaseConnection() {
-      if (curs != nullptr)
-        curs->release();
-      if (stmt != nullptr)
-        stmt->release();
-      if (tra != nullptr)
-        tra->release();
-      if (att != nullptr)
-        att->release();
-      if (dpb != nullptr)
-        dpb->dispose();
-      if (st != nullptr)
-        st->dispose();
-      if (fb_status != nullptr)
-        fb_status->dispose();
-      if (prov != nullptr)
-        prov->release();
-    }
+    void ReleaseConnection();
     /**
      * \brief Проверить установки текущей транзаккции
      * \todo Доделать
      * */
-    bool IsAvailable() const { return is_status_ok(status_); }
+    inline bool IsAvailable() const { return is_status_ok(status_); }
     /**
      * \brief Указатель на транзакцию
      * */
@@ -369,37 +302,7 @@ class DBConnectionFireBird final : public DBConnection {
      * \return mstatus_t Статус, как результат выполнения `execute`
      * */
     template <SQLType SQLT>
-    mstatus_t execute(const SQLT& sql) {
-      mstatus_t status = STATUS_NOT;
-      try {
-        if (att != nullptr) {
-          if constexpr (std::is_same<SQLT, std::string>::value) {
-            att->execute(fb_status.get(), tra, 0, sql.c_str(), SAMPLES_DIALECT,
-                         NULL, NULL, NULL, NULL);
-          } else if constexpr (std::is_same<SQLT, std::stringstream>::value) {
-            att->execute(fb_status.get(), tra, 0, sql.str().c_str(),
-                         SAMPLES_DIALECT, NULL, NULL, NULL, NULL);
-          } else {
-            att->execute(fb_status.get(), tra, 0, sql, SAMPLES_DIALECT, NULL,
-                         NULL, NULL, NULL);
-          }
-          status = STATUS_OK;
-        }
-      } catch (const FbException& e) {
-        status = STATUS_HAVE_ERROR;
-        if (utl != nullptr) {
-          char buf[256];
-          utl->formatStatus(buf, sizeof(buf), e.getStatus());
-          error_.SetError(ERROR_DB_CONNECTION, buf);
-        } else {
-          error_.SetError(ERROR_PAIR_DEFAULT(ERROR_DB_CONNECTION));
-        }
-      } catch (const std::exception& e) {
-        status = STATUS_HAVE_ERROR;
-        error_.SetError(ERROR_DB_CONNECTION, e.what());
-      }
-      return status;
-    }
+    mstatus_t execute(const SQLT& sql);
     /**
      * \brief Подготовить на исполнение SQL команду
      *
@@ -408,79 +311,20 @@ class DBConnectionFireBird final : public DBConnection {
      * \return mstatus_t Статус, как результат выполнения `prepare`
      * */
     template <SQLType SQLT>
-    mstatus_t prepare(const SQLT& sql) {
-      mstatus_t status = STATUS_NOT;
-      try {
-        if (att != nullptr) {
-          if (stmt != nullptr) {
-            stmt->free(fb_status.get());
-            stmt = nullptr;
-          }
-          if constexpr (std::is_same<SQLT, std::string>::value) {
-            stmt = att->prepare(fb_status.get(), tra, 0, sql.c_str(),
-                                SAMPLES_DIALECT,
-                                IStatement::PREPARE_PREFETCH_METADATA);
-          } else if constexpr (std::is_same<SQLT, std::stringstream>::value) {
-            stmt = att->prepare(fb_status.get(), tra, 0, sql.str().c_str(),
-                                SAMPLES_DIALECT,
-                                IStatement::PREPARE_PREFETCH_METADATA);
-          } else {
-            stmt = att->prepare(fb_status.get(), tra, 0, sql, SAMPLES_DIALECT,
-                                IStatement::PREPARE_PREFETCH_METADATA);
-          }
-          // get list of columns
-          meta = stmt->getOutputMetadata(fb_status.get());
-          builder = meta->getBuilder(fb_status.get());
-          unsigned cols = meta->getCount(fb_status.get());
-          status = STATUS_OK;
-        }
-      } catch (const FbException& e) {
-        status = STATUS_HAVE_ERROR;
-        if (utl != nullptr) {
-          char buf[256];
-          utl->formatStatus(buf, sizeof(buf), e.getStatus());
-          error_.SetError(ERROR_DB_CONNECTION, buf);
-        } else {
-          error_.SetError(ERROR_PAIR_DEFAULT(ERROR_DB_CONNECTION));
-        }
-      } catch (const std::exception& e) {
-        status = STATUS_HAVE_ERROR;
-        error_.SetError(ERROR_DB_CONNECTION, e.what());
-      }
-      return status;
-    }
+    mstatus_t prepare(const SQLT& sql);
     /**
      * \brief Получить результат 'prepare' запроса
      * */
-    void get_result(metadata_t& result) {
-      meta = stmt->getOutputMetadata(fb_status.get());
-      builder = meta->getBuilder(fb_status.get());
-      unsigned cols = meta->getCount(fb_status.get());
-      result.assign(cols, MetaDataField());
-      for (unsigned j = 0; j < cols; ++j) {
-        unsigned t = meta->getType(fb_status.get(), j);
-        if (t == SQL_VARYING || t == SQL_TEXT) {
-          builder->setType(fb_status.get(), j, SQL_TEXT);
-          result[j].name = meta->getField(fb_status.get(), j);
-        }
-      }
-    }
+    void get_result(metadata_t& result);
     /**
      * \brief Временная регистрация изменений в БД
      * */
-    void commit() {
-      if (tra != nullptr)
-        tra->commit(fb_status.get());
-    }
+    void commit();
     /**
      * \brief Зафиксировать изменения в БД и отключиться от неё(закрыть
      * интерфейс)
      * */
-    void commit_detach() {
-      tra->commit(fb_status.get());
-      att->detach(fb_status.get());
-      tra = nullptr;
-    }
+    void commit_detach();
 
    public:
     /**
@@ -530,6 +374,82 @@ class DBConnectionFireBird final : public DBConnection {
     std::unique_ptr<ThrowStatusWrapper> fb_status = nullptr;
   } firebird_work;
 };
+
+template <SQLType SQLT>
+mstatus_t DBConnectionFireBird::_firebird_work::execute(const SQLT& sql) {
+  mstatus_t status = STATUS_NOT;
+  try {
+    if (att != nullptr) {
+      if constexpr (std::is_same<SQLT, std::string>::value) {
+        att->execute(fb_status.get(), tra, 0, sql.c_str(), SAMPLES_DIALECT,
+                     NULL, NULL, NULL, NULL);
+      } else if constexpr (std::is_same<SQLT, std::stringstream>::value) {
+        att->execute(fb_status.get(), tra, 0, sql.str().c_str(),
+                     SAMPLES_DIALECT, NULL, NULL, NULL, NULL);
+      } else {
+        att->execute(fb_status.get(), tra, 0, sql, SAMPLES_DIALECT, NULL, NULL,
+                     NULL, NULL);
+      }
+      status = STATUS_OK;
+    }
+  } catch (const FbException& e) {
+    status = STATUS_HAVE_ERROR;
+    if (utl != nullptr) {
+      char buf[256];
+      utl->formatStatus(buf, sizeof(buf), e.getStatus());
+      error_.SetError(ERROR_DB_CONNECTION, buf);
+    } else {
+      error_.SetError(ERROR_PAIR_DEFAULT(ERROR_DB_CONNECTION));
+    }
+  } catch (const std::exception& e) {
+    status = STATUS_HAVE_ERROR;
+    error_.SetError(ERROR_DB_CONNECTION, e.what());
+  }
+  return status;
+}
+
+template <SQLType SQLT>
+mstatus_t DBConnectionFireBird::_firebird_work::prepare(const SQLT& sql) {
+  mstatus_t status = STATUS_NOT;
+  try {
+    if (att != nullptr) {
+      if (stmt != nullptr) {
+        stmt->free(fb_status.get());
+        stmt = nullptr;
+      }
+      if constexpr (std::is_same<SQLT, std::string>::value) {
+        stmt =
+            att->prepare(fb_status.get(), tra, 0, sql.c_str(), SAMPLES_DIALECT,
+                         IStatement::PREPARE_PREFETCH_METADATA);
+      } else if constexpr (std::is_same<SQLT, std::stringstream>::value) {
+        stmt = att->prepare(fb_status.get(), tra, 0, sql.str().c_str(),
+                            SAMPLES_DIALECT,
+                            IStatement::PREPARE_PREFETCH_METADATA);
+      } else {
+        stmt = att->prepare(fb_status.get(), tra, 0, sql, SAMPLES_DIALECT,
+                            IStatement::PREPARE_PREFETCH_METADATA);
+      }
+      // get list of columns
+      meta = stmt->getOutputMetadata(fb_status.get());
+      builder = meta->getBuilder(fb_status.get());
+      unsigned cols = meta->getCount(fb_status.get());
+      status = STATUS_OK;
+    }
+  } catch (const FbException& e) {
+    status = STATUS_HAVE_ERROR;
+    if (utl != nullptr) {
+      char buf[256];
+      utl->formatStatus(buf, sizeof(buf), e.getStatus());
+      error_.SetError(ERROR_DB_CONNECTION, buf);
+    } else {
+      error_.SetError(ERROR_PAIR_DEFAULT(ERROR_DB_CONNECTION));
+    }
+  } catch (const std::exception& e) {
+    status = STATUS_HAVE_ERROR;
+    error_.SetError(ERROR_DB_CONNECTION, e.what());
+  }
+  return status;
+}
 }  // namespace asp_db
 
 #endif  // !_DATABASE__DB_CONNECTION_FIREBIRD_H_

@@ -85,7 +85,9 @@ typedef uint32_t db_variable_id;
 enum class db_client : uint32_t {
   NOONE = 0,
   /// реализация в db_connection_postgre.cpp
-  POSTGRESQL = 1
+  POSTGRESQL = 1,
+  /// реализация в db_connection_firebird.cpp
+  FIREBIRD = 2
 };
 /**
  * \brief Получить имя клиента БД по идентификатору

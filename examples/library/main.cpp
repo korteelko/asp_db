@@ -9,9 +9,9 @@
  * This library is distributed under the MIT License.
  * See LICENSE file in the project root for full license information.
  */
-#include "asp_utils/Logging.h"
 #include "asp_db/db_connection.h"
 #include "asp_db/db_connection_manager.h"
+#include "asp_utils/Logging.h"
 #include "library_structs.h"
 #include "library_tables.h"
 
@@ -37,10 +37,22 @@
 
 using namespace asp_db;
 
-db_parameters get_parameters() {
+db_parameters get_parameters_postgres() {
   db_parameters d;
   d.is_dry_run = false;
   d.supplier = db_client::POSTGRESQL;
+  d.name = "labibliotecadebabel";
+  d.username = "jorge";
+  d.password = "my_pass";
+  d.host = "127.0.0.1";
+  d.port = 5432;
+  return d;
+}
+
+db_parameters get_parameters_firebird() {
+  db_parameters d;
+  d.is_dry_run = false;
+  d.supplier = db_client::FIREBIRD;
   d.name = "labibliotecadebabel";
   d.username = "jorge";
   d.password = "my_pass";
@@ -157,8 +169,7 @@ int add_data(DBConnectionManager& dbm) {
   return is_status_ok(st);
 }
 
-int test_table() {
-  auto dp = get_parameters();
+int test_table(const db_parameters& dp) {
   LibraryDBTables lt;
   DBConnectionManager dbm(&lt);
   mstatus_t st = dbm.ResetConnectionParameters(dp);
@@ -167,9 +178,7 @@ int test_table() {
                     "reset connection error: " + dbm.GetErrorMessage());
     return -1;
   }
-  std::vector<library_db_tables> tbs = {table_book, table_translation,
-                                        table_author};
-  for (const auto& t : tbs)
+  for (const auto& t : {table_book, table_translation, table_author})
     if (!dbm.IsTableExists(t))
       dbm.CreateTable(t);
   if (is_status_ok(dbm.GetStatus())) {
@@ -183,5 +192,6 @@ int test_table() {
 
 int main(int argc, char* argv[]) {
   Logging::InitDefault();
-  return test_table();
+  // test_table(get_parameters_postgres());
+  return test_table(get_parameters_firebird());
 }

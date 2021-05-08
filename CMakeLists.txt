@@ -12,6 +12,7 @@ set(OUTPUT_DIR ${ASP_DB_ROOT}/out)
 message(STATUS "${PROJECT_NAME} build type: ${CMAKE_BUILD_TYPE}")
 
 option(WITH_POSTGRESQL "Build with postres libs: `pq` and `pqxx`" ON)
+option(WITH_FIREBIRD "Build with firebird lib: `fbclient`" ON)
 option(BUILD_EXAMPLES "Build examples" ON)
 option(BUILD_TESTS "Run tests" ON)
 
@@ -19,6 +20,11 @@ if(WITH_POSTGRESQL)
   message(STATUS "Add libraries pq and pqxx.\n\t\t"
     "See http://pqxx.org/development/libpqxx for more information")
   list(APPEND OPTIONAL_SRC ${ASP_DB_ROOT}/source/db_connection_postgre.cpp)
+endif()
+# firebird сначала для win
+if(WIN32 AND WITH_FIREBIRD)
+  message(STATUS "Add libraries fbclient.\n\t\t")
+  list(APPEND OPTIONAL_SRC ${ASP_DB_ROOT}/source/db_connection_firebird.cpp)
 endif()
 
 add_library(
@@ -57,6 +63,18 @@ if(WITH_POSTGRESQL)
   endif()
   target_compile_definitions(${TARGET_ASP_DB_LIB}
                              PRIVATE -DBYCMAKE_WITH_POSTGRESQL)
+endif()
+
+if(WITH_FIREBIRD)
+  if(WIN32)
+    if(NOT $ENV{FIREBIRD_INCLUDE})
+      message(WARNING "Enviroment variable `FIREBIRD_INCLUDE` isn't set")
+    endif()
+    target_include_directories(${TARGET_ASP_DB_LIB} PRIVATE $ENV{FIREBIRD_INCLUDE})
+    target_compile_definitions(${TARGET_ASP_DB_LIB}
+                             PRIVATE -DBYCMAKE_WITH_FIREBIRD)
+    list(APPEND OPTIONAL_LIBS fbclient_ms)
+  endif()
 endif()
 
 add_subdirectory(${MODULES_DIR}/asp_utils)

@@ -12,6 +12,9 @@
 #if defined(WITH_POSTGRESQL)
 #include "asp_db/db_connection_postgre.h"
 #endif  // WITH_POSTGRESQL
+#if defined(WITH_FIREBIRD)
+#include "asp_db/db_connection_firebird.h"
+#endif  // WITH_FIREBIRD
 
 #include <ctime>
 
@@ -26,6 +29,14 @@ logging_cfg postgres_logging_cfg(POSTGRE_DRYRUN_LOGGER,
                                  DEFAULT_FLUSH_RATE,
                                  false);
 #endif  // WITH_POSTGRESQL
+#if defined(WITH_FIREBIRD)
+logging_cfg firebird_logging_cfg(FIREBIRD_DRYRUN_LOGGER,
+                                 io_loglvl::info_logs,
+                                 FIREBIRD_DRYRUN_LOGFILE,
+                                 DEFAULT_MAXLEN_LOGFILE,
+                                 DEFAULT_FLUSH_RATE,
+                                 false);
+#endif  // WITH_FIREBIRD
 
 // db_parameters::db_parameters()
 //   : supplier(db_client::NOONE) {}
@@ -305,6 +316,15 @@ DBConnectionManager::DBConnectionCreator::initDBConnection(
       if (!ConnectionCreator::db_logger_.IsRegistered(postgres_logging_cfg))
         ConnectionCreator::db_logger_.Register(postgres_logging_cfg);
       connect = std::make_unique<DBConnectionPostgre>(
+          tables, parameters, &ConnectionCreator::db_logger_);
+      break;
+#endif  // WITH_POSTGRESQL
+#if defined(WITH_FIREBIRD)
+    case db_client::FIREBIRD:
+      // зарегистрировать логгер для postgre
+      if (!ConnectionCreator::db_logger_.IsRegistered(firebird_logging_cfg))
+        ConnectionCreator::db_logger_.Register(firebird_logging_cfg);
+      connect = std::make_unique<DBConnectionFireBird>(
           tables, parameters, &ConnectionCreator::db_logger_);
       break;
 #endif  // WITH_POSTGRESQL

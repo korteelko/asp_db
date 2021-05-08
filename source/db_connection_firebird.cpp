@@ -87,9 +87,7 @@ DBConnectionFireBird::DBConnectionFireBird(const IDBTables* tables,
     : DBConnection(tables, parameters, logger), firebird_work(parameters) {}
 
 DBConnectionFireBird::DBConnectionFireBird(const DBConnectionFireBird& r)
-    : DBConnection(r), firebird_work(r.parameters_) {
-  firebird_work.ReleaseConnection();
-}
+    : DBConnection(r), firebird_work(r.parameters_) {}
 
 DBConnectionFireBird& DBConnectionFireBird::operator=(
     const DBConnectionFireBird& r) {
@@ -102,9 +100,13 @@ DBConnectionFireBird& DBConnectionFireBird::operator=(
     error_.Reset();
     status_ = STATUS_DEFAULT;
     is_connected_ = false;
-    firebird_work.ReleaseConnection();
+    // firebird_work.ReleaseConnection();
   }
   return *this;
+}
+
+DBConnectionFireBird::~DBConnectionFireBird() {
+  CloseConnection();
 }
 
 std::shared_ptr<DBConnection> DBConnectionFireBird::CloneConnection() {
@@ -464,10 +466,6 @@ std::string DBConnectionFireBird::getVariableValue(const db_variable& var,
   if ((t == db_variable_type::type_char_array
        || t == db_variable_type::type_text)) {
     str = value + ", ";
-  } else if (t == db_variable_type::type_date) {
-    str = DateToFireBirdDate(value) + ", ";
-  } else if (t == db_variable_type::type_time) {
-    str = TimeToFireBirdTime(value) + ", ";
   } else {
     str += value + ", ";
   }
@@ -523,4 +521,111 @@ std::string DBConnectionFireBird::db_variable_to_string(const db_variable& dv) {
   }
   return ss.str();
 }
+
+// _firebird_work
+DBConnectionFireBird::_firebird_work::_firebird_work(
+    const db_parameters& parameters)
+    : BaseObject(STATUS_DEFAULT), parameters(parameters) {
+  if (master != nullptr) {
+    st = master->getStatus();
+    prov = master->getDispatcher();
+    utl = master->getUtilInterface();
+    // fb_status = std::make_unique<ThrowStatusWrapper>(st);
+    fb_status = std::unique_ptr<ThrowStatusWrapper>(new ThrowStatusWrapper(st));
+    status_ = STATUS_OK;
+  } else {
+    status_ = STATUS_HAVE_ERROR;
+    error_.SetError(ERROR_DB_CONNECTION, "Инициализация мастера соединения");
+  }
+}
+
+DBConnectionFireBird::_firebird_work::~_firebird_work() {
+  ReleaseConnection();
+}
+
+bool DBConnectionFireBird::_firebird_work::InitConnection(bool read_only) {
+  try {
+    if (!read_only) {
+      dpb = utl->getXpbBuilder(fb_status.get(), IXpbBuilder::DPB, NULL, 0);
+      att = prov->attachDatabase(fb_status.get(), parameters.name.c_str(), 0,
+                                 NULL);
+    } else {
+      dpb = utl->getXpbBuilder(fb_status.get(), IXpbBuilder::TPB, NULL, 0);
+      dpb->insertTag(fb_status.get(), isc_tpb_read_committed);
+      dpb->insertTag(fb_status.get(), isc_tpb_no_rec_version);
+      dpb->insertTag(fb_status.get(), isc_tpb_wait);
+      dpb->insertTag(fb_status.get(), isc_tpb_read);
+      att = prov->attachDatabase(fb_status.get(), parameters.name.c_str(),
+                                 dpb->getBufferLength(fb_status.get()),
+                                 dpb->getBuffer(fb_status.get()));
+    }
+    // вероятно здесь стандартное 'sysdba' и 'masterkey'
+    dpb->insertString(fb_status.get(), isc_dpb_user_name,
+                      parameters.username.c_str());
+    dpb->insertString(fb_status.get(), isc_dpb_password,
+                      parameters.password.c_str());
+    // TODO: что-то мне не нравится этот кусок
+    tra = att->startTransaction(fb_status.get(), 0, NULL);
+  } catch (const FbException& e) {
+    status_ = STATUS_HAVE_ERROR;
+    if (utl != nullptr) {
+      char buf[512];
+      utl->formatStatus(buf, sizeof(buf), e.getStatus());
+      error_.SetError(ERROR_DB_CONNECTION, buf);
+    } else {
+      error_.SetError(ERROR_PAIR_DEFAULT(ERROR_DB_CONNECTION));
+    }
+  } catch (const std::exception& e) {
+    status_ = STATUS_HAVE_ERROR;
+    error_.SetError(ERROR_DB_CONNECTION, e.what());
+  }
+  if (error_.GetErrorCode() != ERROR_SUCCESS_T)
+    error_.LogIt();
+  return IsAvailable();
+}
+
+void DBConnectionFireBird::_firebird_work::ReleaseConnection() {
+  if (curs != nullptr)
+    curs->release();
+  if (stmt != nullptr)
+    stmt->release();
+  if (tra != nullptr)
+    tra->release();
+  if (att != nullptr)
+    att->release();
+  if (dpb != nullptr)
+    dpb->dispose();
+  if (st != nullptr)
+    st->dispose();
+  // if (fb_status.get() != nullptr)
+  //   fb_status->dispose();
+  if (prov != nullptr)
+    prov->release();
+}
+
+void DBConnectionFireBird::_firebird_work::get_result(metadata_t& result) {
+  meta = stmt->getOutputMetadata(fb_status.get());
+  builder = meta->getBuilder(fb_status.get());
+  unsigned cols = meta->getCount(fb_status.get());
+  result.assign(cols, MetaDataField());
+  for (unsigned j = 0; j < cols; ++j) {
+    unsigned t = meta->getType(fb_status.get(), j);
+    if (t == SQL_VARYING || t == SQL_TEXT) {
+      builder->setType(fb_status.get(), j, SQL_TEXT);
+      result[j].name = meta->getField(fb_status.get(), j);
+    }
+  }
+}
+
+void DBConnectionFireBird::_firebird_work::commit() {
+  if (tra != nullptr)
+    tra->commit(fb_status.get());
+}
+
+void DBConnectionFireBird::_firebird_work::commit_detach() {
+  tra->commit(fb_status.get());
+  att->detach(fb_status.get());
+  tra = nullptr;
+}
+
 }  // namespace asp_db

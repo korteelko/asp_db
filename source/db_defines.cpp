@@ -28,6 +28,9 @@ std::string db_client_to_string(db_client client) {
     case db_client::POSTGRESQL:
       name = "postgresql";
       break;
+    case db_client::FIREBIRD:
+      name = "firebird";
+      break;
     default:
       throw DBException("Неизвестный клиент БД");
   }
