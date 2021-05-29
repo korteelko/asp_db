@@ -96,7 +96,7 @@ class idbtables_exception : public std::exception {
  * */
 class IDBTables {
  public:
-  virtual ~IDBTables() {}
+  virtual ~IDBTables() = default;
 
   /**
    * \brief Получить имя пространства имён таблиц

@@ -297,6 +297,9 @@ mstatus_t DBConnectionManager::tryExecuteTransaction(Transaction& tr) {
   }
   return trans_st;
 }
+const IDBTables* DBConnectionManager::GetTablesInterface() const {
+  return tables_;
+}
 
 /* DBConnection::DBConnectionInstance */
 PrivateLogging DBConnectionManager::DBConnectionCreator::db_logger_;

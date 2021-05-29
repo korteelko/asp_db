@@ -133,7 +133,8 @@ class DBException : public std::exception {
  * */
 class DBConnectionManager : public BaseObject {
  public:
-  DBConnectionManager(const IDBTables* tables);
+  explicit DBConnectionManager(const IDBTables* tables);
+  const IDBTables *GetTablesInterface() const;
   // API DB
   mstatus_t CheckConnection();
   // static const std::vector<std::string> &GetJSONKeys();
@@ -303,7 +304,7 @@ class DBConnectionManager : public BaseObject {
   /** \brief Запрос на удаление рядов */
   void deleteRows(Transaction* tr, const db_query_delete_setup& qd, void*);
 
-  /** \brief провести транзакцию tr из собраных запросов(строк) */
+  /** \brief провести транзакцию tr из собранных запросов(строк) */
   [[nodiscard]] mstatus_t tryExecuteTransaction(Transaction& tr);
 
  private:
@@ -321,8 +322,8 @@ class DBConnectionManager : public BaseObject {
   const IDBTables* tables_;
   /* todo: replace with connection pull */
   /**
-   * \brief Указатель иницианилизированное подключение
-   * \note Мэйби контейнер??? Хотя лучше несколько мэнеджеров держать
+   * \brief Указатель инициализированное подключение
+   * \note Мэйби контейнер??? Хотя лучше несколько менеджеров держать
    * */
   std::unique_ptr<DBConnection> db_connection_;
 };
