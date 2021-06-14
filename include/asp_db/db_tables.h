@@ -23,8 +23,6 @@
 #include <string>
 #include <vector>
 
-#include <stdint.h>
-
 /* macro */
 #define TABLE_FIELD_NAME(x) x##_NAME
 #define TABLE_FIELD_PAIR(x) x, x##_NAME
@@ -42,12 +40,12 @@
  *   value[db_query_basesetup::row_values] Контейнер собранных значений
  *   i[db_query_basesetup::field_index] Индекс поля в контейнере полей таблицы
  * */
-#define insert_macro(field_flag, field_id, str)  \
-  {                                              \
-    if (select_data.initialized & field_flag)    \
-      if ((i = src->IndexByFieldId(field_id)) != \
-          db_query_basesetup::field_index_end)   \
-        values.emplace(i, str);                  \
+#define insert_macro(field_flag, field_id, str)   \
+  {                                               \
+    if (select_data.initialized & field_flag)     \
+      if ((i = src->IndexByFieldId(field_id))     \
+          != db_query_basesetup::field_index_end) \
+        values.emplace(i, str);                   \
   }
 
 namespace asp_db {
@@ -61,13 +59,14 @@ class IDBTables;
 template <db_table table>
 class idbtables_exception : public std::exception {
  public:
-  idbtables_exception(const std::string& msg) : tables_(nullptr), msg_(msg) {}
-  idbtables_exception(class IDBTables* tables, const std::string& msg)
+  explicit idbtables_exception(std::string&& msg)
+      : tables_(nullptr), msg_(msg) {}
+  idbtables_exception(class IDBTables* tables, std::string&& msg)
       : tables_(tables), msg_(msg) {}
 
   idbtables_exception(class IDBTables* tables,
                       db_variable_id id,
-                      const std::string& msg)
+                      std::string&& msg)
       : tables_(tables), field_id_(id), msg_(msg) {}
 
   const char* what() const noexcept override { return msg_.c_str(); }
@@ -106,7 +105,7 @@ class IDBTables {
    * Удобно на обработке исключений, если например сразу несколько
    * интерфейсов IDBTables создано
    * */
-  virtual std::string GetTablesNamespace() const { return "IDBTables"; }
+  virtual std::string GetTablesNamespace() const = 0;
   /**
    * \brief Получить имя таблицы по её id
    * \param t Идентификатор таблицы
@@ -223,7 +222,9 @@ class IDBTables {
    * \note Шаблон закрыт, разрешены только спецификации ниже
    * */
   template <class T>
-  void setInsertValues(db_query_insert_setup* src, const T& select_data) const;
+  void setInsertValues(db_query_insert_setup* src, const T& select_data) const {
+    assert(0 && "not implemented function");
+  }
   /**
    * \brief Инициализировать сетап добавления в БД
    * \param t Идентификатор таблицы
@@ -265,9 +266,8 @@ template <db_table table>
 std::string idbtables_exception<table>::WhatWithDataInfo() const {
   std::string msg = msg_;
   if (tables_) {
-    msg = "Table: " + tables_->GetTableName(table) +
-          "\nField id: " + std::to_string(field_id_) + "\nOriginal message: '" +
-          msg_ + "'";
+    msg = "Table: " + tables_->GetTableName(table) + "\nField id: "
+          + std::to_string(field_id_) + "\nOriginal message: '" + msg_ + "'";
   }
   return msg;
 }
@@ -276,9 +276,11 @@ template <db_table table>
 const db_variable& IDBTables::GetFieldById(db_variable_id id) {
   const db_fields_collection* fc = GetFieldsCollection(table);
   if (fc) {
-    for (auto f = fc->begin(); f != fc->end(); ++f)
-      if (f->fid == id)
-        return *f;
+    const auto field = std::find_if(
+        fc->begin(), fc->end(), [id](const auto& it) { return it.fid == id;
+        });
+    if (field != fc->end())
+      return *field;
   } else {
     throw idbtables_exception<table>(
         this, "IDBTables метод GetFieldCollection вернул nullptr");
@@ -295,7 +297,7 @@ std::unique_ptr<db_query_insert_setup> IDBTables::InitInsertSetup(
   db_table table = GetTableCode<TableI>();
   std::unique_ptr<db_query_insert_setup> ins_setup(
       new db_query_insert_setup(table, *GetFieldsCollection(table)));
-  if (ins_setup.get() != nullptr)
+  if (ins_setup)
     for (auto& x : insert_data)
       setInsertValues<TableI>(ins_setup.get(), x);
   return ins_setup;
@@ -310,7 +312,7 @@ std::shared_ptr<db_query_insert_setup> IDBTables::init(
     return nullptr;
   std::shared_ptr<db_query_insert_setup> ins_setup(
       new db_query_insert_setup(t, *GetFieldsCollection(t)));
-  if (ins_setup.get() != nullptr)
+  if (ins_setup)
     for (const auto& x : insert_data)
       setInsertValues<Table>(src, x);
   return ins_setup;

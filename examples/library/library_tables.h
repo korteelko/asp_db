@@ -91,6 +91,7 @@ enum library_db_tables {
 
 /** \brief Перегруженные функции api БД */
 class LibraryDBTables final : public IDBTables {
+  std::string GetTablesNamespace() const override { return "LibraryDBTables"; }
   std::string GetTableName(db_table t) const override;
   const db_fields_collection* GetFieldsCollection(db_table t) const override;
   db_table StrToTableCode(const std::string& tname) const override;
