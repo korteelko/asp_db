@@ -2,14 +2,16 @@ cmake_minimum_required(VERSION 3.9)
 
 set(PROJECT_NAME asp_db)
 project(${PROJECT_NAME})
+
 set(TARGET_ASP_DB_LIB ${PROJECT_NAME})
 
 set(ASP_DB_ROOT ${CMAKE_CURRENT_SOURCE_DIR})
 set(SOURCE_ROOT ${CMAKE_CURRENT_SOURCE_DIR}/source)
+
 set(MODULES_DIR ${ASP_DB_ROOT}/lib)
 set(OUTPUT_DIR ${ASP_DB_ROOT}/out)
 
-message(STATUS "${PROJECT_NAME} build type: ${CMAKE_BUILD_TYPE}")
+include(${MODULES_DIR}/asp_utils/cmake/env_setup.cmake)
 
 option(WITH_POSTGRESQL "Build with postres libs: `pq` and `pqxx`" ON)
 option(WITH_FIREBIRD "Build with firebird lib: `fbclient`" OFF)
@@ -39,6 +41,9 @@ add_library(
   ${OPTIONAL_SRC})
 
 target_compile_features(${TARGET_ASP_DB_LIB} PUBLIC cxx_std_20)
+append_list_defines_system(SYSTEM_DEFINES_LIST)
+target_compile_definitions(${TARGET_ASP_DB_LIB} PRIVATE ${SYSTEM_DEFINES_LIST})
+
 target_include_directories(${TARGET_ASP_DB_LIB} PUBLIC ${ASP_DB_ROOT}/include)
 
 if(WIN32)
@@ -47,10 +52,6 @@ if(WIN32)
   endif()
   set(CMAKE_TOOLCHAIN_FILE $ENV{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake)
   set(CMAKE_PREFIX_PATH $ENV{VCPKG_ROOT}/installed/x64-windows)
-  target_compile_definitions(${TARGET_ASP_DB_LIB} PRIVATE OS_WINDOWS)
-elseif(UNIX)
-  target_compile_definitions(${TARGET_ASP_DB_LIB} PRIVATE OS_UNIX)
-  target_compile_options(${TARGET_ASP_DB_LIB} PUBLIC -fconcepts)
 endif()
 
 if(WITH_POSTGRESQL)
@@ -104,14 +105,4 @@ if(BUILD_TESTS AND UNIX)
   add_subdirectory("${ASP_DB_ROOT}/tests")
 endif()
 
-if(UNIX)
-  # генерировать .json файл информации о компилируемых объектниках
-  #   compile_commands.json
-  set(CMAKE_EXPORT_COMPILE_COMMANDS TRUE)
-  # скопировать файл compile_commands.json в корень проекта, для работы
-  #   синтаксических анализаторов, cppcheck и т.д.
-  add_custom_target(
-    copy-compile-commands-asp_db ALL
-    ${CMAKE_COMMAND} -E copy_if_different
-    ${CMAKE_BINARY_DIR}/compile_commands.json ${CMAKE_CURRENT_LIST_DIR})
-endif()
+copy_compile_commands(${TARGET_ASP_DB_LIB})
