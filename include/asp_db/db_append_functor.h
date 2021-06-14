@@ -18,7 +18,7 @@
  * */
 template <class T = void>
 struct pass {
-  T operator()(const T& t) const { return t; }
+  auto operator()(const T& t) const { return t; }
 };
 /**
  * \brief Шаблонный функтор на преобразование целочисленного значения
@@ -28,7 +28,7 @@ template <class T,
           typename =
               typename std::enable_if<std::is_arithmetic<T>::value, T>::type>
 struct integer2str {
-  std::string operator()(T t) const { return std::to_string(t); }
+  auto operator()(T t) const { return std::to_string(t); }
 };
 
 /**

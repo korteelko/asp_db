@@ -402,7 +402,7 @@ class WhereTree {
   /**
    * \brief Получить собранное дерево
    * */
-  const std::shared_ptr<DBWhereClause<where_node_data>> GetWhereTree() const {
+  std::shared_ptr<DBWhereClause<where_node_data>> GetWhereTree() const {
     return clause_;
   }
   const IDBTables* GetTables() const { return constructor_.GetTables(); }

@@ -25,12 +25,11 @@
 #include "asp_utils/Logging.h"
 #include "asp_utils/ThreadWrap.h"
 
+#include <cstdint>
 #include <exception>
 #include <functional>
 #include <string>
 #include <vector>
-
-#include <stdint.h>
 
 namespace asp_db {
 /** \brief Класс инкапсулирующий конечную высокоуровневую операцию с БД
@@ -89,7 +88,7 @@ class DBException : public std::exception {
   DBException(merror_t error, const std::string& msg);
   DBException(const std::string& msg);
 
-  const char* what() const noexcept;
+  const char* what() const noexcept override;
 
   /* build options */
   /**

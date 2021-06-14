@@ -1,4 +1,5 @@
 build/
+cmake-build*/
 docs/
 lib/asp_db
 out/
@@ -8,6 +9,7 @@ tests/html
 .cache/
 .ccls-cache/
 .clangd/
+.idea/
 .vs/
 .vscode/
 
