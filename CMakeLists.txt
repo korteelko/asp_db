@@ -40,9 +40,7 @@ add_library(
   ${ASP_DB_ROOT}/source/db_query.cpp
   ${OPTIONAL_SRC})
 
-target_compile_features(${TARGET_ASP_DB_LIB} PUBLIC cxx_std_20)
-append_list_defines_system(SYSTEM_DEFINES_LIST)
-target_compile_definitions(${TARGET_ASP_DB_LIB} PRIVATE ${SYSTEM_DEFINES_LIST})
+add_system_defines(${TARGET_ASP_DB_LIB})
 
 target_include_directories(${TARGET_ASP_DB_LIB} PUBLIC ${ASP_DB_ROOT}/include)
 
@@ -81,7 +79,7 @@ endif()
 add_subdirectory(${MODULES_DIR}/asp_utils)
 
 if(CMAKE_BUILD_TYPE MATCHES Debug)
-  target_compile_definitions(${TARGET_ASP_DB_LIB} PRIVATE -DBYCMAKE_DEBUG)
+  target_compile_definitions(${TARGET_ASP_DB_LIB} PRIVATE BYCMAKE_DEBUG)
 endif()
 
 find_package(Threads REQUIRED)
