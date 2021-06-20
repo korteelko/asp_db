@@ -5,6 +5,10 @@ set(ASP_DB_INCLUDE ${CMAKE_CURRENT_SOURCE_DIR}/../../include)
 
 add_executable(${TARGET_EXAMPLE} library_tables.cpp main.cpp)
 add_system_defines(${TARGET_EXAMPLE})
+target_compile_definitions(${TARGET_EXAMPLE} PRIVATE
+  DEBUG_POSTGRESQL
+  # DEBUG_FIREBIRD
+)
 
 target_include_directories(${TARGET_EXAMPLE} PRIVATE ${ASP_DB_INCLUDE})
 

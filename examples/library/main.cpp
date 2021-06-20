@@ -192,6 +192,12 @@ int test_table(const db_parameters& dp) {
 
 int main(int argc, char* argv[]) {
   Logging::InitDefault();
-  // test_table(get_parameters_postgres());
-  return test_table(get_parameters_firebird());
+  int ret = 0;
+#if defined(DEBUG_POSTGRESQL)
+  ret += test_table(get_parameters_postgres());
+#endif  // DEBUG_POSTGRESQL
+#if defined(DEBUG_FIREBIRD)
+  ret += test_table(get_parameters_firebird());
+#endif  // DEBUG_FIREBIRD
+  return ret;
 }
