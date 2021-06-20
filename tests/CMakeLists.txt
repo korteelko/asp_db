@@ -23,6 +23,7 @@ if(${GTEST_FOUND})
     ${LIBRARY_EXAMPLE_DIR}/library_tables.cpp
     ${OPTIONAL_SRC}
   )
+  add_system_defines(${TARGET_ASP_DB_TESTS})
   target_compile_options(${TARGET_ASP_DB_TESTS}
     PRIVATE -fprofile-arcs -ftest-coverage -Wall)
 
