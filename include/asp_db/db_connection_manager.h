@@ -25,9 +25,7 @@
 #include "asp_utils/Logging.h"
 #include "asp_utils/ThreadWrap.h"
 
-#include <cstdint>
 #include <exception>
-#include <functional>
 #include <string>
 #include <vector>
 
@@ -133,7 +131,7 @@ class DBException : public std::exception {
 class DBConnectionManager : public BaseObject {
  public:
   explicit DBConnectionManager(const IDBTables* tables);
-  const IDBTables *GetTablesInterface() const;
+  const IDBTables* GetTablesInterface() const;
   // API DB
   mstatus_t CheckConnection();
   // static const std::vector<std::string> &GetJSONKeys();
@@ -234,8 +232,6 @@ class DBConnectionManager : public BaseObject {
    * */
   mstatus_t UpdateTableFormat(db_table dt);
 
-  std::string GetErrorMessage();
-
  private:
   class DBConnectionCreator;
   typedef DBConnectionManager::DBConnectionCreator ConnectionCreator;
@@ -328,13 +324,12 @@ class DBConnectionManager : public BaseObject {
 };
 
 /**
- * \brief Закрытый класс создания соединений с БД
+ * \brief Закрытый синглетон класс создания соединений с БД
  * */
 class DBConnectionManager::DBConnectionCreator {
   OWNER(DBConnectionManager);
 
- private:
-  DBConnectionCreator();
+  static DBConnectionCreator& getInstance();
 
   /**
    * \brief Инициализировать соединение с БД
@@ -354,15 +349,13 @@ class DBConnectionManager::DBConnectionCreator {
    *
    * \return Указатель на реализацию подключения или nullptr
    * */
-  static std::shared_ptr<DBConnection> cloneConnection(DBConnection* orig);
+  std::shared_ptr<DBConnection> cloneConnection(DBConnection* orig) const;
 
  private:
   /**
    * \brief Логгер модуля БД
-   *
-   * \todo why it is static?
    * */
-  static PrivateLogging db_logger_;
+  PrivateLogging db_logger_;
 };
 
 /* template methods of DBConnectionManager */

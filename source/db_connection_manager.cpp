@@ -109,10 +109,10 @@ mstatus_t DBConnectionManager::CheckConnection() {
   }
   if (db_connection_ && is_status_aval(status_)) {
     // TODO: вообще клонировать надо только postgres подключение
-    //   ввести флагец или что-либо похожее
-    auto connection =
-        DBConnectionCreator().cloneConnection(db_connection_.get());
-    if (connection.get()) {
+    //     ввести флагец или что-либо похожее
+    if (auto connection = DBConnectionCreator::getInstance().cloneConnection(
+            db_connection_.get());
+        connection) {
       Transaction tr(connection.get());
       tr.AddQuery(QuerySmartPtr(new DBQuerySetupConnection(connection.get())));
       tr.AddQuery(QuerySmartPtr(new DBQueryCloseConnection(connection.get())));
@@ -197,23 +197,6 @@ mstatus_t DBConnectionManager::UpdateTableFormat(db_table dt) {
   return result;
 }
 
-/*
-mstatus_t DBConnectionManager::DeleteModelInfo(model_info &where) {
-  std::unique_ptr<db_query_delete_setup> dds(
-      db_query_delete_setup::Init(tables_,
-tables_->GetTableCode<model_info>())); if (dds)
-    dds->where_condition.reset(tables_->InitWhereTree<model_info>(where));
-  db_save_point sp("delete_rows");
-  return exec_wrap<const db_query_delete_setup &, void,
-      void (DBConnectionManager::*)(Transaction *, const db_query_delete_setup
-&, void *)>(*dds, nullptr, &DBConnectionManager::deleteRows, &sp);
-}
-*/
-
-std::string DBConnectionManager::GetErrorMessage() {
-  return error_.GetMessage();
-}
-
 mstatus_t DBConnectionManager::deleteRowsImp(
     const std::shared_ptr<db_query_delete_setup>& dds) {
   db_save_point sp("delete_rows");
@@ -230,8 +213,9 @@ void DBConnectionManager::initDBConnection() {
   std::unique_lock<SharedMutex> lock(connect_init_lock_);
   status_ = STATUS_OK;
   try {
-    db_connection_ = std::unique_ptr<DBConnection>(
-        DBConnectionCreator().initDBConnection(tables_, parameters_));
+    db_connection_ =
+        std::unique_ptr(DBConnectionCreator::getInstance().initDBConnection(
+            tables_, parameters_));
   } catch (DBException& e) {
     e.LogException();
     // если даже объект подключения был создан - затереть его
@@ -302,8 +286,11 @@ const IDBTables* DBConnectionManager::GetTablesInterface() const {
 }
 
 /* DBConnection::DBConnectionInstance */
-PrivateLogging DBConnectionManager::DBConnectionCreator::db_logger_;
-DBConnectionManager::DBConnectionCreator::DBConnectionCreator() {}
+DBConnectionManager::DBConnectionCreator&
+DBConnectionManager::DBConnectionCreator::getInstance() {
+  static DBConnectionCreator dc;
+  return dc;
+}
 
 std::unique_ptr<DBConnection>
 DBConnectionManager::DBConnectionCreator::initDBConnection(
@@ -313,24 +300,22 @@ DBConnectionManager::DBConnectionCreator::initDBConnection(
   switch (parameters.supplier) {
     case db_client::NOONE:
       break;
-#if defined(WITH_POSTGRESQL)
     case db_client::POSTGRESQL:
-      // зарегистрировать логгер для postgre
-      if (!ConnectionCreator::db_logger_.IsRegistered(postgres_logging_cfg))
-        ConnectionCreator::db_logger_.Register(postgres_logging_cfg);
-      connect = std::make_unique<DBConnectionPostgre>(
-          tables, parameters, &ConnectionCreator::db_logger_);
-      break;
+#if defined(WITH_POSTGRESQL)
+      if (!db_logger_.IsRegistered(postgres_logging_cfg))
+        db_logger_.Register(postgres_logging_cfg);
+      connect = std::make_unique<DBConnectionPostgre>(tables, parameters,
+                                                      &db_logger_);
 #endif  // WITH_POSTGRESQL
-#if defined(WITH_FIREBIRD)
+      break;
     case db_client::FIREBIRD:
-      // зарегистрировать логгер для postgre
-      if (!ConnectionCreator::db_logger_.IsRegistered(firebird_logging_cfg))
-        ConnectionCreator::db_logger_.Register(firebird_logging_cfg);
-      connect = std::make_unique<DBConnectionFireBird>(
-          tables, parameters, &ConnectionCreator::db_logger_);
+#if defined(WITH_FIREBIRD)
+      if (!db_logger_.IsRegistered(firebird_logging_cfg))
+        db_logger_.Register(firebird_logging_cfg);
+      connect = std::make_unique<DBConnectionFireBird>(tables, parameters,
+                                                       &db_logger_);
+#endif  // WITH_FIREBIRD
       break;
-#endif  // WITH_POSTGRESQL
     // TODO: можно тут ошибку установить
     default:
       break;
@@ -339,7 +324,8 @@ DBConnectionManager::DBConnectionCreator::initDBConnection(
 }
 
 std::shared_ptr<DBConnection>
-DBConnectionManager::DBConnectionCreator::cloneConnection(DBConnection* orig) {
+DBConnectionManager::DBConnectionCreator::cloneConnection(
+    DBConnection* orig) const {
   try {
     return (orig) ? orig->CloneConnection() : nullptr;
   } catch (std::exception& e) {

@@ -11,7 +11,6 @@
 
 #include "asp_db/db_connection_manager.h"
 
-#include <functional>
 #include <map>
 #include <sstream>
 
